@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────
+  # Lint & type check (fast, runs first)
+  # ─────────────────────────────────────────
+  lint:
+    name: Lint & type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install lint dependencies
+        run: pip install ruff black mypy
+      - name: ruff
+        run: ruff check src/ tests/
+      - name: black (check)
+        run: black --check src/ tests/
+
+  # ─────────────────────────────────────────
+  # Test matrix: pip-based (newer Python + RDKit)
+  # ─────────────────────────────────────────
+  test-pip:
+    name: "Python ${{ matrix.python-version }} / pip"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install rdkit pygoslin
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: |
+          pytest --cov=pylipidparse --cov-report=xml -v --ignore=tests/test_performance.py
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+
+  # ─────────────────────────────────────────
+  # Test matrix: conda-based (older Python + older RDKit)
+  # ─────────────────────────────────────────
+  test-conda:
+    name: "Python ${{ matrix.python-version }} / RDKit ${{ matrix.rdkit-version }} / conda"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.8"
+            rdkit-version: "2021.09"
+          - python-version: "3.9"
+            rdkit-version: "2022.09"
+          - python-version: "3.10"
+            rdkit-version: "2023.03"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          channel-priority: strict
+          activate-environment: test-env
+
+      - name: Install dependencies (conda)
+        shell: bash -l {0}
+        run: |
+          conda install -y "rdkit=${{ matrix.rdkit-version }}"
+          pip install pygoslin
+          pip install -e ".[dev]" --no-deps
+
+      - name: Run tests
+        shell: bash -l {0}
+        run: |
+          pytest --cov=pylipidparse --cov-report=xml -v --ignore=tests/test_performance.py
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false

@@ -1,0 +1,18 @@
+name: pylipidparse
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - rdkit>=2022.09
+  - pip
+  - pip:
+    - pygoslin>=2.0.0
+    - pytest>=7.0
+    - pytest-cov>=4.0
+    - pytest-benchmark>=4.0
+    - black>=23.0
+    - ruff>=0.1.0
+    - mypy>=1.0
+    - pre-commit>=3.0
+    - -e .

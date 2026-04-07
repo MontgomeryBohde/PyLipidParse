@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pylipidparse"
+version = "0.1.0"
+description = "Convert lipid shorthand notation to SMILES, InChI, InChIKey, and RDKit molecules"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+keywords = ["lipidomics", "cheminformatics", "rdkit", "smiles", "lipid", "lipidmaps"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "pygoslin>=2.0.0",
+    "rdkit>=2021.03",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-benchmark>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+docs = [
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.20",
+]
+
+[project.urls]
+Homepage = "https://github.com/MontgomeryBohde/PyLipidParse"
+Documentation = "https://montgomerybohde.github.io/PyLipidParse"
+"Bug Tracker" = "https://github.com/MontgomeryBohde/PyLipidParse/issues"
+Changelog = "https://github.com/MontgomeryBohde/PyLipidParse/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pylipidparse"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=pylipidparse --cov-report=term-missing -v"
+
+[tool.coverage.run]
+source = ["src/pylipidparse"]
+omit = ["*/tests/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+
+[tool.mypy]
+python_version = "3.8"
+strict = false
+ignore_missing_imports = true
