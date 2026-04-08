@@ -1,10 +1,9 @@
 """Tests for sterol (ST) structure generation."""
+
 import pytest
 from rdkit import Chem
-from rdkit.Chem import rdMolDescriptors
 
 from pylipidparse import LipidConverter
-from pylipidparse.exceptions import UnsupportedLipidClassError
 from tests.conftest import assert_formula
 
 
@@ -37,12 +36,15 @@ class TestCholesterol:
 class TestCholesterolEsters:
     """Tests for cholesterol esters."""
 
-    @pytest.mark.parametrize("lipid_name,expected_formula", [
-        ("CE 16:0", "C43H76O2"),    # Cholesteryl palmitate
-        ("CE 18:1(9Z)", "C45H78O2"),  # Cholesteryl oleate
-        ("CE 18:0", "C45H80O2"),    # Cholesteryl stearate
-        ("CE 20:4(5Z,8Z,11Z,14Z)", "C47H76O2"),  # Cholesteryl arachidonate
-    ])
+    @pytest.mark.parametrize(
+        "lipid_name,expected_formula",
+        [
+            ("CE 16:0", "C43H76O2"),  # Cholesteryl palmitate
+            ("CE 18:1(9Z)", "C45H78O2"),  # Cholesteryl oleate
+            ("CE 18:0", "C45H80O2"),  # Cholesteryl stearate
+            ("CE 20:4(5Z,8Z,11Z,14Z)", "C47H76O2"),  # Cholesteryl arachidonate
+        ],
+    )
     def test_ce_formula(self, conv, lipid_name, expected_formula):
         smiles = conv.to_smiles(lipid_name)
         assert_formula(smiles, expected_formula, lipid_name)

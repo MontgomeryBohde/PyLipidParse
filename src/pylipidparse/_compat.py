@@ -3,6 +3,7 @@
 RDKit's API has changed across versions. This module isolates all
 version-specific calls so the rest of the codebase can use a stable interface.
 """
+
 from typing import Optional
 
 from rdkit import Chem

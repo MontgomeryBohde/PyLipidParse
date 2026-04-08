@@ -12,6 +12,7 @@ For cholesterol esters (CE):
   - lipid.headgroup.headgroup = "CE"
   - lipid.fa = {"FA1": fa}  (the esterified fatty acid)
 """
+
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
@@ -52,25 +53,17 @@ _BILE_ACIDS = {
         "CC[C@@H](O)CC)[C@@H](O)CC[C@@H]3O"
     ),
     # Deoxycholic acid — PubChem CID 222528, C24H40O4
-    "DCA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
-        "CC[C@@H](O)CC)CCC3O"
-    ),
+    "DCA": ("OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CC[C@@H](O)CC)CCC3O"),
     # Chenodeoxycholic acid — PubChem CID 10133, C24H40O4
     "CDCA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
-        "CCC(O)CC)[C@@H](O)CCC3"
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CCC(O)CC)[C@@H](O)CCC3"
     ),
     # Ursodeoxycholic acid — PubChem CID 31401, C24H40O4
     "UDCA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
-        "CCC(O)CC)[C@H](O)CCC3"
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CCC(O)CC)[C@H](O)CCC3"
     ),
     # Lithocholic acid — PubChem CID 9903, C24H40O3
-    "LCA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
-        "CCCC)CCC3O"
-    ),
+    "LCA": ("OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CCCC)CCC3O"),
 }
 
 _BILE_ACID_ALIASES = {
@@ -107,7 +100,9 @@ class SterolBuilder(AbstractLipidBuilder):
             return self._build_cholesterol_ester(lipid)
 
         # Bile acids
-        bile_key = _BILE_ACID_ALIASES.get(hg_upper) or (hg_upper if hg_upper in _BILE_ACIDS else None)
+        bile_key = _BILE_ACID_ALIASES.get(hg_upper) or (
+            hg_upper if hg_upper in _BILE_ACIDS else None
+        )
         if bile_key and bile_key in _BILE_ACIDS:
             smiles = _BILE_ACIDS[bile_key]
             return self._mol_from_smiles_sanitized(smiles)
@@ -125,9 +120,7 @@ class SterolBuilder(AbstractLipidBuilder):
     def _build_cholesterol_ester(self, lipid) -> Chem.Mol:
         fa_list = list(lipid.fa.values())
         if not fa_list:
-            raise StructureGenerationError(
-                "No fatty acid chain found for cholesterol ester."
-            )
+            raise StructureGenerationError("No fatty acid chain found for cholesterol ester.")
         fa = fa_list[0]
 
         num_carbon = int(fa.num_carbon)
@@ -137,6 +130,7 @@ class SterolBuilder(AbstractLipidBuilder):
 
         if num_db > 0 and not db_positions:
             from pylipidparse.exceptions import InsufficientStructuralDetailError
+
             raise InsufficientStructuralDetailError(
                 f"Acyl chain has {num_db} double bond(s) but no positional info."
             )

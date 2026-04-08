@@ -1,4 +1,5 @@
 """Abstract base class for all lipid builders."""
+
 from abc import ABC, abstractmethod
 
 from rdkit import Chem
@@ -63,7 +64,8 @@ class AbstractLipidBuilder(ABC):
         pylipidparse.exceptions.StructureGenerationError
             If sanitization fails.
         """
-        from rdkit.Chem import SanitizeMol, AssignStereochemistry
+        from rdkit.Chem import AssignStereochemistry, SanitizeMol
+
         from pylipidparse.exceptions import StructureGenerationError
 
         try:

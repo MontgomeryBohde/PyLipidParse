@@ -1,10 +1,9 @@
 """Tests for sphingolipid (SP) structure generation."""
+
 import pytest
 from rdkit import Chem
-from rdkit.Chem import rdMolDescriptors
 
 from pylipidparse import LipidConverter
-from pylipidparse.exceptions import InsufficientStructuralDetailError
 from tests.conftest import assert_formula
 
 
@@ -16,16 +15,19 @@ def conv():
 class TestCeramideFormulas:
     """Verify molecular formulas for ceramides."""
 
-    @pytest.mark.parametrize("lipid_name,expected_formula", [
-        # Standard ceramide d18:1/16:0 (PubChem CID: 5283564)
-        ("Cer 18:1;O2/16:0", "C34H67NO3"),
-        # Ceramide d18:1/24:1(15Z)
-        ("Cer 18:1;O2/24:1(15Z)", "C42H81NO3"),
-        # Dihydroceramide d18:0/16:0
-        ("Cer 18:0;O2/16:0", "C34H69NO3"),
-        # Ceramide with hydroxylated FA
-        ("Cer 18:1;O2/16:0;OH", "C34H67NO4"),
-    ])
+    @pytest.mark.parametrize(
+        "lipid_name,expected_formula",
+        [
+            # Standard ceramide d18:1/16:0 (PubChem CID: 5283564)
+            ("Cer 18:1;O2/16:0", "C34H67NO3"),
+            # Ceramide d18:1/24:1(15Z)
+            ("Cer 18:1;O2/24:1(15Z)", "C42H81NO3"),
+            # Dihydroceramide d18:0/16:0
+            ("Cer 18:0;O2/16:0", "C34H69NO3"),
+            # Ceramide with hydroxylated FA
+            ("Cer 18:1;O2/16:0;OH", "C34H67NO4"),
+        ],
+    )
     def test_formula(self, conv, lipid_name, expected_formula):
         smiles = conv.to_smiles(lipid_name)
         assert_formula(smiles, expected_formula, lipid_name)

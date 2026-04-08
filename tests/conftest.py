@@ -1,4 +1,5 @@
 """Shared pytest fixtures and helpers."""
+
 import pytest
 from rdkit import Chem
 
@@ -7,6 +8,7 @@ from rdkit import Chem
 def converter():
     """A shared LipidConverter instance for the test session."""
     from pylipidparse import LipidConverter
+
     return LipidConverter()
 
 
@@ -55,9 +57,7 @@ def assert_formula(smiles: str, expected_formula: str, context: str = ""):
 
     formula = rdMolDescriptors.CalcMolFormula(mol)
     assert formula == expected_formula, (
-        f"{prefix}Formula mismatch:\n"
-        f"  Got:      {formula}\n"
-        f"  Expected: {expected_formula}"
+        f"{prefix}Formula mismatch:\n" f"  Got:      {formula}\n" f"  Expected: {expected_formula}"
     )
 
 
@@ -65,8 +65,8 @@ def assert_valid_inchikey(inchikey: str, context: str = ""):
     """Assert that a string is a valid InChIKey (27 chars, correct format)."""
     prefix = f"[{context}] " if context else ""
     assert inchikey is not None, f"{prefix}InChIKey is None"
-    assert len(inchikey) == 27, (
-        f"{prefix}InChIKey wrong length: {len(inchikey)} (expected 27): {inchikey!r}"
-    )
+    assert (
+        len(inchikey) == 27
+    ), f"{prefix}InChIKey wrong length: {len(inchikey)} (expected 27): {inchikey!r}"
     assert inchikey[14] == "-", f"{prefix}InChIKey missing hyphen at pos 14: {inchikey!r}"
     assert inchikey[25] == "-", f"{prefix}InChIKey missing hyphen at pos 25: {inchikey!r}"

@@ -1,5 +1,5 @@
 """Main LipidConverter class — the public entry point for PyLipidParse."""
-import warnings
+
 from typing import List, Optional, Union
 
 from rdkit import Chem
@@ -11,46 +11,108 @@ from pylipidparse.exceptions import (
 )
 
 # Lipid class dispatch tables
-_FA_CLASSES = frozenset({
-    "FA", "FAL", "FOH", "FAM", "FAO", "FAHFA",
-    # Oxidized fatty acids
-    "OXF", "OXFA",
-})
+_FA_CLASSES = frozenset(
+    {
+        "FA",
+        "FAL",
+        "FOH",
+        "FAM",
+        "FAO",
+        "FAHFA",
+        # Oxidized fatty acids
+        "OXF",
+        "OXFA",
+    }
+)
 
-_GL_CLASSES = frozenset({
-    "MG", "DG", "TG",
-    "MAG", "DAG", "TAG",  # alternative naming
-    "MG_", "DG_", "TG_",
-})
+_GL_CLASSES = frozenset(
+    {
+        "MG",
+        "DG",
+        "TG",
+        "MAG",
+        "DAG",
+        "TAG",  # alternative naming
+        "MG_",
+        "DG_",
+        "TG_",
+    }
+)
 
-_GP_CLASSES = frozenset({
-    "PC", "PE", "PA", "PI", "PS", "PG",
-    "PIP", "PIP2", "PIP3",
-    "LPC", "LPE", "LPA", "LPI", "LPS", "LPG",
-    "LPIP", "LPIP2", "LPIP3",
-    "LNPC", "LNPE",
-    # Oxidized variants
-    "OxPC", "OxPE", "OxPA", "OxPI",
-    "OXPC", "OXPE", "OXPA", "OXPI",
-})
+_GP_CLASSES = frozenset(
+    {
+        "PC",
+        "PE",
+        "PA",
+        "PI",
+        "PS",
+        "PG",
+        "PIP",
+        "PIP2",
+        "PIP3",
+        "LPC",
+        "LPE",
+        "LPA",
+        "LPI",
+        "LPS",
+        "LPG",
+        "LPIP",
+        "LPIP2",
+        "LPIP3",
+        "LNPC",
+        "LNPE",
+        # Oxidized variants
+        "OxPC",
+        "OxPE",
+        "OxPA",
+        "OxPI",
+        "OXPC",
+        "OXPE",
+        "OXPA",
+        "OXPI",
+    }
+)
 
-_SP_CLASSES = frozenset({
-    "Cer", "CerP", "Cer_P",
-    "HexCer", "Hex1Cer", "Hex2Cer", "Hex3Cer",
-    "SM", "LSM",
-    "GlcCer", "GalCer", "LacCer",
-    "SPB", "SPBP",
-    "SHexCer", "SHex2Cer",
-    "Cer1P",
-    "CER",
-    # Gangliosides — future support
-})
+_SP_CLASSES = frozenset(
+    {
+        "Cer",
+        "CerP",
+        "Cer_P",
+        "HexCer",
+        "Hex1Cer",
+        "Hex2Cer",
+        "Hex3Cer",
+        "SM",
+        "LSM",
+        "GlcCer",
+        "GalCer",
+        "LacCer",
+        "SPB",
+        "SPBP",
+        "SHexCer",
+        "SHex2Cer",
+        "Cer1P",
+        "CER",
+        # Gangliosides — future support
+    }
+)
 
-_ST_CLASSES = frozenset({
-    "ST", "SE", "FC", "CE", "ChE",
-    "Cholesterol",
-    "BA", "CA", "DCA", "CDCA", "UDCA", "LCA",
-})
+_ST_CLASSES = frozenset(
+    {
+        "ST",
+        "SE",
+        "FC",
+        "CE",
+        "ChE",
+        "Cholesterol",
+        "BA",
+        "CA",
+        "DCA",
+        "CDCA",
+        "UDCA",
+        "LCA",
+    }
+)
 
 # Names that are synonyms for free cholesterol and cannot be parsed by pygoslin
 _CHOLESTEROL_SYNONYMS = frozenset({"FC", "CHOLESTEROL", "CHOL"})
@@ -124,9 +186,8 @@ class LipidConverter:
         # Free cholesterol synonyms pygoslin cannot parse — short-circuit directly
         if lipid_name.strip().upper() in _CHOLESTEROL_SYNONYMS:
             from pylipidparse.builders.sterol import _CHOLESTEROL_SMILES
-            mol = Chem.MolFromSmiles(_CHOLESTEROL_SMILES)
-            from rdkit.Chem import SanitizeMol
-            SanitizeMol(mol)
+
+            mol = Chem.MolFromSmiles(_CHOLESTEROL_SMILES)  # MolFromSmiles sanitizes by default
             if self._cache_size > 0:
                 if len(self._cache) >= self._cache_size:
                     del self._cache[next(iter(self._cache))]
@@ -140,6 +201,7 @@ class LipidConverter:
         # Species-level lipids have no .fa attribute — can't generate a unique structure
         if not hasattr(lipid_mol, "fa"):
             from pylipidparse.exceptions import InsufficientStructuralDetailError
+
             raise InsufficientStructuralDetailError(
                 f"Cannot generate a unique structure for {lipid_name!r}. "
                 "The input is species-level (sum composition) — it does not specify "
@@ -170,22 +232,27 @@ class LipidConverter:
 
         if hg_class in {c.upper() for c in _FA_CLASSES}:
             from pylipidparse.builders.fatty_acid import FattyAcidBuilder
+
             return FattyAcidBuilder().build(lipid)
 
         if hg_class in {c.upper() for c in _GL_CLASSES}:
             from pylipidparse.builders.glycerolipid import GlycerolipidBuilder
+
             return GlycerolipidBuilder().build(lipid)
 
         if hg_class in {c.upper() for c in _GP_CLASSES}:
             from pylipidparse.builders.glycerophospholipid import GlycerophospholipidBuilder
+
             return GlycerophospholipidBuilder().build(lipid)
 
         if hg_class in {c.upper() for c in _SP_CLASSES}:
             from pylipidparse.builders.sphingolipid import SphingolipidBuilder
+
             return SphingolipidBuilder().build(lipid)
 
         if hg_class in {c.upper() for c in _ST_CLASSES}:
             from pylipidparse.builders.sterol import SterolBuilder
+
             return SterolBuilder().build(lipid)
 
         raise UnsupportedLipidClassError(
@@ -291,6 +358,7 @@ class LipidConverter:
         mol = Chem.RWMol(self.to_mol(lipid_name))
         if add_hydrogens:
             from rdkit.Chem import AddHs
+
             mol = Chem.RWMol(AddHs(mol))
         compute_2d_coords(mol)
         Chem.MolToMolFile(mol, path)
@@ -328,6 +396,7 @@ class LipidConverter:
                 mol = Chem.RWMol(self.to_mol(name))
                 if add_hydrogens:
                     from rdkit.Chem import AddHs
+
                     mol = Chem.RWMol(AddHs(mol))
                 compute_2d_coords(mol)
                 mol.SetProp("_Name", name)

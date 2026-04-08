@@ -9,6 +9,7 @@ Usage
 >>> conv.to_inchikey("PC 16:0/18:1(9Z)")
 '...'
 """
+
 from pylipidparse.converter import LipidConverter
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,

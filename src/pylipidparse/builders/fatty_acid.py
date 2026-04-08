@@ -9,6 +9,7 @@ pygoslin API (confirmed against pygoslin 2.x):
   - fa.lipid_FA_bond_type          → LipidFaBondType enum
   - fa.functional_groups           → dict {name: [FunctionalGroup...]}
 """
+
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
@@ -83,9 +84,7 @@ class FattyAcidBuilder(AbstractLipidBuilder):
         """Build a fatty acid molecule."""
         fa_list = list(lipid.fa.values())
         if not fa_list:
-            raise StructureGenerationError(
-                f"No fatty acid chains found in parsed lipid: {lipid}"
-            )
+            raise StructureGenerationError(f"No fatty acid chains found in parsed lipid: {lipid}")
         fa = fa_list[0]
 
         num_carbon = int(fa.num_carbon)

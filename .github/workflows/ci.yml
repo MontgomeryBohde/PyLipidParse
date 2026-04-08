@@ -91,9 +91,9 @@ jobs:
       - name: Install dependencies (conda)
         shell: bash -l {0}
         run: |
-          conda install -y "rdkit=${{ matrix.rdkit-version }}"
-          pip install pygoslin
-          pip install -e ".[dev]" --no-deps
+          conda install -y "rdkit=${{ matrix.rdkit-version }}.*"
+          pip install pygoslin pytest pytest-cov pytest-benchmark
+          pip install -e . --no-deps
 
       - name: Run tests
         shell: bash -l {0}

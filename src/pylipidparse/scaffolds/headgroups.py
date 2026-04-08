@@ -31,6 +31,7 @@ PC 16:0/18:1 — PubChem CID: 5497103
 PE 16:0/18:1 — PubChem CID: 5497103 (verify)
 Cholesterol   — PubChem CID: 5997
 """
+
 from typing import Dict
 
 # ============================================================================
@@ -79,10 +80,7 @@ GLYCEROPHOSPHOLIPID_SCAFFOLDS: Dict[str, str] = {
     # PA: phosphatidic acid — neutral (diprotonated phosphate monoester)
     "PA": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)O",
     # PI: phosphatidylinositol — neutral
-    "PI": (
-        "{sn1}OC[C@@H](O{sn2})COP(=O)(O)"
-        "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"
-    ),
+    "PI": ("{sn1}OC[C@@H](O{sn2})COP(=O)(O)" "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"),
     # PS: phosphatidylserine — neutral
     "PS": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](N)C(=O)O",
     # PG: phosphatidylglycerol — neutral
@@ -100,14 +98,8 @@ GLYCEROPHOSPHOLIPID_SCAFFOLDS: Dict[str, str] = {
     "LPA_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)O",
     "LPA_SN2": "OC[C@@H](O{sn2})COP(=O)(O)O",
     # LPI sn-1 — neutral
-    "LPI_SN1": (
-        "{sn1}OC[C@@H](O)COP(=O)(O)"
-        "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"
-    ),
-    "LPI_SN2": (
-        "OC[C@@H](O{sn2})COP(=O)(O)"
-        "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"
-    ),
+    "LPI_SN1": ("{sn1}OC[C@@H](O)COP(=O)(O)" "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"),
+    "LPI_SN2": ("OC[C@@H](O{sn2})COP(=O)(O)" "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"),
     # LPS sn-1 — neutral
     "LPS_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC[C@@H](N)C(=O)O",
     "LPS_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](N)C(=O)O",
@@ -135,8 +127,7 @@ SPHINGOLIPID_HEADGROUPS: Dict[str, str] = {
     "GalCer": "O[C@@H]1O[C@H](CO)[C@H](O)[C@@H](O)[C@@H]1O",
     # Lactosylceramide (Hex2Cer): Glc-Gal
     "Hex2Cer": (
-        "O[C@@H]1O[C@H](CO[C@@H]2O[C@H](CO)[C@H](O)[C@@H](O)[C@@H]2O)"
-        "[C@@H](O)[C@H](O)[C@@H]1O"
+        "O[C@@H]1O[C@H](CO[C@@H]2O[C@H](CO)[C@H](O)[C@@H](O)[C@@H]2O)" "[C@@H](O)[C@H](O)[C@@H]1O"
     ),
     # Ceramide-1-phosphate
     "Cer1P": "OP(=O)([O-])[O-]",

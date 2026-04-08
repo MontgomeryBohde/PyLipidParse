@@ -7,6 +7,7 @@ Performance targets:
 - Hot cache: < 1ms per lipid (after first parse)
 - Batch 100 unique: < 5 seconds
 """
+
 import pytest
 
 from pylipidparse import LipidConverter

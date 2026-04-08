@@ -1,12 +1,13 @@
 """Edge case tests for PyLipidParse."""
+
 import warnings
+
 import pytest
 
 from pylipidparse import LipidConverter
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
     LipidParseError,
-    UnsupportedLipidClassError,
 )
 
 
@@ -41,11 +42,14 @@ class TestParseErrors:
 class TestSpeciesLevel:
     """Species-level (sum composition) inputs must raise InsufficientStructuralDetailError."""
 
-    @pytest.mark.parametrize("lipid_name", [
-        "PC 34:1",
-        "PE 36:2",
-        "TG 54:3",
-    ])
+    @pytest.mark.parametrize(
+        "lipid_name",
+        [
+            "PC 34:1",
+            "PE 36:2",
+            "TG 54:3",
+        ],
+    )
     def test_species_level_raises(self, conv, lipid_name):
         with pytest.raises(InsufficientStructuralDetailError):
             conv.to_smiles(lipid_name)
@@ -75,13 +79,15 @@ class TestUnspecifiedGeometry:
                 warnings.simplefilter("always")
                 smiles = conv.to_smiles("FA 18:1(9)")
                 # If warning was issued, check its message
-                unspecified_warnings = [
-                    x for x in w
+                _unspecified = [
+                    x
+                    for x in w
                     if issubclass(x.category, UserWarning)
                     and "unspecified" in str(x.message).lower()
                 ]
                 # Either a warning was issued OR the molecule is valid
                 from rdkit import Chem
+
                 mol = Chem.MolFromSmiles(smiles)
                 assert mol is not None
         except (InsufficientStructuralDetailError, LipidParseError):
@@ -94,17 +100,20 @@ class TestChainLengthEdgeCases:
     def test_very_short_chain(self, conv):
         """FA 2:0 = acetic acid."""
         from tests.conftest import assert_smiles_equivalent
+
         smiles = conv.to_smiles("FA 2:0")
         assert_smiles_equivalent(smiles, "CC(=O)O", "FA 2:0 = acetic acid")
 
     def test_medium_length(self, conv):
         from rdkit import Chem
+
         smiles = conv.to_smiles("FA 14:0")  # Myristic acid
         mol = Chem.MolFromSmiles(smiles)
         assert mol is not None
 
     def test_long_chain(self, conv):
         from rdkit import Chem
+
         smiles = conv.to_smiles("FA 26:0")
         mol = Chem.MolFromSmiles(smiles)
         assert mol is not None

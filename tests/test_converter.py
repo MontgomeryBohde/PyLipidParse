@@ -1,4 +1,5 @@
 """Integration tests for LipidConverter."""
+
 import pytest
 from rdkit import Chem
 
@@ -6,13 +7,13 @@ from pylipidparse import LipidConverter
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
     LipidParseError,
-    UnsupportedLipidClassError,
 )
-from tests.conftest import assert_smiles_equivalent, assert_valid_inchikey
+from tests.conftest import assert_valid_inchikey
 
 
 def test_import():
     from pylipidparse import LipidConverter
+
     assert LipidConverter is not None
 
 

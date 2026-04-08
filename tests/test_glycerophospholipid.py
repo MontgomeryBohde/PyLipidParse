@@ -1,7 +1,7 @@
 """Tests for glycerophospholipid (GP) structure generation."""
+
 import pytest
 from rdkit import Chem
-from rdkit.Chem import rdMolDescriptors
 
 from pylipidparse import LipidConverter
 from pylipidparse.exceptions import InsufficientStructuralDetailError
@@ -16,21 +16,24 @@ def conv():
 class TestGPFormulas:
     """Verify molecular formulas for common glycerophospholipids."""
 
-    @pytest.mark.parametrize("lipid_name,expected_formula", [
-        # PC
-        ("PC 16:0/18:1(9Z)", "C42H82NO8P"),
-        ("PC 18:0/20:4(5Z,8Z,11Z,14Z)", "C46H84NO8P"),
-        # PE
-        ("PE 16:0/18:1(9Z)", "C39H76NO8P"),
-        # PA
-        ("PA 16:0/18:1(9Z)", "C37H71O8P"),
-        # PI
-        ("PI 16:0/18:1(9Z)", "C43H81O13P"),
-        # PS
-        ("PS 16:0/18:1(9Z)", "C40H76NO10P"),
-        # PG
-        ("PG 16:0/18:1(9Z)", "C40H77O10P"),
-    ])
+    @pytest.mark.parametrize(
+        "lipid_name,expected_formula",
+        [
+            # PC
+            ("PC 16:0/18:1(9Z)", "C42H82NO8P"),
+            ("PC 18:0/20:4(5Z,8Z,11Z,14Z)", "C46H84NO8P"),
+            # PE
+            ("PE 16:0/18:1(9Z)", "C39H76NO8P"),
+            # PA
+            ("PA 16:0/18:1(9Z)", "C37H71O8P"),
+            # PI
+            ("PI 16:0/18:1(9Z)", "C43H81O13P"),
+            # PS
+            ("PS 16:0/18:1(9Z)", "C40H76NO10P"),
+            # PG
+            ("PG 16:0/18:1(9Z)", "C40H77O10P"),
+        ],
+    )
     def test_formula(self, conv, lipid_name, expected_formula):
         smiles = conv.to_smiles(lipid_name)
         assert_formula(smiles, expected_formula, lipid_name)
@@ -53,11 +56,14 @@ class TestGPFormulas:
 class TestLysoGP:
     """Tests for lyso-glycerophospholipids."""
 
-    @pytest.mark.parametrize("lipid_name,expected_formula", [
-        ("LPC 16:0", "C24H50NO7P"),
-        ("LPE 16:0", "C21H44NO7P"),
-        ("LPA 16:0", "C19H39O7P"),
-    ])
+    @pytest.mark.parametrize(
+        "lipid_name,expected_formula",
+        [
+            ("LPC 16:0", "C24H50NO7P"),
+            ("LPE 16:0", "C21H44NO7P"),
+            ("LPA 16:0", "C19H39O7P"),
+        ],
+    )
     def test_lyso_formula(self, conv, lipid_name, expected_formula):
         smiles = conv.to_smiles(lipid_name)
         assert_formula(smiles, expected_formula, lipid_name)

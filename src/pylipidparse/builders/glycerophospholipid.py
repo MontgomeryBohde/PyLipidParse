@@ -1,14 +1,13 @@
 """Glycerophospholipid (GP) builder."""
+
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
 from pylipidparse.builders.glycerolipid import (
     _BT_NO_FA,
-    _BT_PLASMENYL,
-    _BT_PLASMANYL,
     _build_chain_fragment,
-    _get_bond_type,
     _extract_sn_chains,
+    _get_bond_type,
 )
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
@@ -55,9 +54,7 @@ class GlycerophospholipidBuilder(AbstractLipidBuilder):
         try:
             scaffold = get_gp_scaffold(base_hg, sn1_present, sn2_present)
         except KeyError as exc:
-            raise UnsupportedLipidClassError(
-                f"No scaffold available for {headgroup}."
-            ) from exc
+            raise UnsupportedLipidClassError(f"No scaffold available for {headgroup}.") from exc
 
         subs = {}
         if sn1_present:

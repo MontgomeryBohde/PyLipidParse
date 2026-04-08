@@ -16,6 +16,7 @@ biological defaults:
   - 1 double bond → position 4, geometry E (standard d-erythro sphingosine)
   - 0 double bonds → no double bond (dihydrosphingosine)
 """
+
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder

@@ -16,6 +16,7 @@ Terminology
 - Z: cis configuration (same-side substituents)
 - E: trans configuration (opposite-side substituents)
 """
+
 import warnings
 from typing import Dict, Optional
 
@@ -228,9 +229,7 @@ def build_alkyl_chain(
                 tail_mods[pos - 2] = mod
 
         if tail_n > 0:
-            tail = build_acyl_chain(
-                tail_n, tail_db, tail_mods, terminus="alkyl"
-            )
+            tail = build_acyl_chain(tail_n, tail_db, tail_mods, terminus="alkyl")
         else:
             tail = ""
 

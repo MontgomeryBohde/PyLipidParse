@@ -1,4 +1,5 @@
 """Tests for output format methods: SMILES, InChI, InChIKey, MOL, SDF."""
+
 import pytest
 from rdkit import Chem
 
@@ -22,10 +23,15 @@ class TestSMILES:
     def test_smiles_parseable(self, conv):
         """Generated SMILES must be parseable by RDKit."""
         for name in [
-            "FA 16:0", "FA 18:1(9Z)", "FA 20:4(5Z,8Z,11Z,14Z)",
-            "PC 16:0/18:1(9Z)", "PE 16:0/18:1(9Z)",
-            "Cer 18:1;O2/16:0", "SM 18:1;O2/16:0",
-            "ST 27:1;O", "CE 16:0",
+            "FA 16:0",
+            "FA 18:1(9Z)",
+            "FA 20:4(5Z,8Z,11Z,14Z)",
+            "PC 16:0/18:1(9Z)",
+            "PE 16:0/18:1(9Z)",
+            "Cer 18:1;O2/16:0",
+            "SM 18:1;O2/16:0",
+            "ST 27:1;O",
+            "CE 16:0",
         ]:
             try:
                 smiles = conv.to_smiles(name)
@@ -68,18 +74,21 @@ class TestInChIKey:
         """Palmitic acid InChIKey from PubChem CID 985."""
         ik = conv.to_inchikey("FA 16:0")
         # PubChem CID 985 InChIKey: IPCSVZSSVZVIGE-UHFFFAOYSA-N
-        assert ik == "IPCSVZSSVZVIGE-UHFFFAOYSA-N", (
-            f"Palmitic acid InChIKey mismatch: {ik}"
-        )
+        assert ik == "IPCSVZSSVZVIGE-UHFFFAOYSA-N", f"Palmitic acid InChIKey mismatch: {ik}"
 
     def test_different_molecules_different_keys(self, conv):
         ik1 = conv.to_inchikey("FA 16:0")
         ik2 = conv.to_inchikey("FA 18:0")
         assert ik1 != ik2
 
-    @pytest.mark.parametrize("lipid_name", [
-        "FA 16:0", "FA 18:1(9Z)", "FA 18:2(9Z,12Z)",
-    ])
+    @pytest.mark.parametrize(
+        "lipid_name",
+        [
+            "FA 16:0",
+            "FA 18:1(9Z)",
+            "FA 18:2(9Z,12Z)",
+        ],
+    )
     def test_inchikey_valid_format(self, conv, lipid_name):
         ik = conv.to_inchikey(lipid_name)
         assert_valid_inchikey(ik, lipid_name)

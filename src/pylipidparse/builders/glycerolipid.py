@@ -1,4 +1,5 @@
 """Glycerolipid (GL) builder: MAG, DAG, TAG."""
+
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
@@ -9,19 +10,17 @@ from pylipidparse.builders.fatty_acid import (
 )
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
-    StructureGenerationError,
-    UnsupportedLipidClassError,
 )
 from pylipidparse.scaffolds.headgroups import get_glycerolipid_scaffold
 from pylipidparse.utils.chain import build_acyl_chain, build_alkyl_chain
 
 # LipidFaBondType enum name fragments (checked via str comparison for version safety)
-_BT_PLASMENYL = "PLASMENYL"   # ETHER_PLASMENYL = P- (plasmalogen)
-_BT_PLASMANYL = "PLASMANYL"   # ETHER_PLASMANYL = O- (alkyl ether)
-_BT_ETHER     = "ETHER"       # generic ether
-_BT_ESTER     = "ESTER"
-_BT_NO_FA     = "NO_FA"
-_BT_LCB       = "LCB"         # LCB_REGULAR or LCB_EXCEPTION
+_BT_PLASMENYL = "PLASMENYL"  # ETHER_PLASMENYL = P- (plasmalogen)
+_BT_PLASMANYL = "PLASMANYL"  # ETHER_PLASMANYL = O- (alkyl ether)
+_BT_ETHER = "ETHER"  # generic ether
+_BT_ESTER = "ESTER"
+_BT_NO_FA = "NO_FA"
+_BT_LCB = "LCB"  # LCB_REGULAR or LCB_EXCEPTION
 
 
 def _get_bond_type(fa) -> str:
@@ -35,11 +34,11 @@ def _get_bond_type(fa) -> str:
     if _BT_LCB in bt_str:
         return _BT_LCB
     if _BT_PLASMENYL in bt_str:
-        return _BT_PLASMENYL   # P- prefix
+        return _BT_PLASMENYL  # P- prefix
     if _BT_PLASMANYL in bt_str:
-        return _BT_PLASMANYL   # O- prefix
+        return _BT_PLASMANYL  # O- prefix
     if _BT_ETHER in bt_str:
-        return _BT_PLASMANYL   # generic ether treated as alkyl ether
+        return _BT_PLASMANYL  # generic ether treated as alkyl ether
     return _BT_ESTER
 
 
@@ -90,9 +89,7 @@ class GlycerolipidBuilder(AbstractLipidBuilder):
                 "Use slash notation, e.g. 'TG 16:0/18:1(9Z)/18:2(9Z,12Z)'."
             )
 
-        scaffold = get_glycerolipid_scaffold(
-            headgroup, sn1_present, sn2_present, sn3_present
-        )
+        scaffold = get_glycerolipid_scaffold(headgroup, sn1_present, sn2_present, sn3_present)
 
         subs = {}
         if sn1_present:
