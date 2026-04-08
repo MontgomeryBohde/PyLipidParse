@@ -20,7 +20,7 @@ class TestCeramideFormulas:
         # Standard ceramide d18:1/16:0 (PubChem CID: 5283564)
         ("Cer 18:1;O2/16:0", "C34H67NO3"),
         # Ceramide d18:1/24:1(15Z)
-        ("Cer 18:1;O2/24:1(15Z)", "C42H79NO3"),
+        ("Cer 18:1;O2/24:1(15Z)", "C42H81NO3"),
         # Dihydroceramide d18:0/16:0
         ("Cer 18:0;O2/16:0", "C34H69NO3"),
         # Ceramide with hydroxylated FA
@@ -64,6 +64,6 @@ class TestGlycosphingolipids:
     def test_hexcer_formula(self, conv):
         """HexCer d18:1/16:0 formula check."""
         # Cer d18:1/16:0 = C34H67NO3; HexCer adds hexose = +C6H10O5
-        # HexCer = C40H75NO8
+        # HexCer d18:1/16:0: Cer(C34H67NO3) + hexose(C6H12O6) - H2O = C40H77NO8
         smiles = conv.to_smiles("HexCer 18:1;O2/16:0")
-        assert_formula(smiles, "C40H75NO8", "HexCer d18:1/16:0")
+        assert_formula(smiles, "C40H77NO8", "HexCer d18:1/16:0")

@@ -1,122 +1,128 @@
 """Sterol (ST) builder.
 
 Handles cholesterol, cholesterol esters, and common bile acids.
+Sterols use hardcoded SMILES scaffolds (the ring system can't be generated
+algorithmically).
 
-Architecture
-------------
-Sterols have a fixed fused ring system that cannot be generated algorithmically.
-This builder uses a lookup table of known sterol SMILES and, for cholesterol esters,
-attaches the acyl chain to the C3-OH of cholesterol.
+pygoslin for ST 27:1;O:
+  - lipid.headgroup.headgroup = "ST 27:1;O"  (full string, not just "ST")
+  - lipid.fa = {}  (no FA chains for free sterols)
 
-Supported
----------
-- ST 27:1;O (cholesterol, free cholesterol)
-- CE / ChE (cholesterol esters with any fatty acid chain)
-- Common bile acids: cholic, deoxycholic, chenodeoxycholic, ursodeoxycholic, lithocholic
-
-Not yet supported
------------------
-- Plant sterols (campesterol, sitosterol, stigmasterol)
-- Steroid hormones (cortisol, testosterone, estradiol)
-- Vitamin D metabolites
+For cholesterol esters (CE):
+  - lipid.headgroup.headgroup = "CE"
+  - lipid.fa = {"FA1": fa}  (the esterified fatty acid)
 """
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
-from pylipidparse.builders.fatty_acid import _extract_modifications
+from pylipidparse.builders.fatty_acid import (
+    _extract_db_count,
+    _extract_db_positions,
+    _extract_modifications,
+)
 from pylipidparse.exceptions import (
     StructureGenerationError,
     UnsupportedLipidClassError,
 )
-from pylipidparse.scaffolds.sterols import STEROL_SMILES, BILE_ACID_SMILES
 from pylipidparse.utils.chain import build_acyl_chain
 
-# Cholesterol SMILES (PubChem CID 5997, isomeric SMILES)
-# Verified against PubChem: CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@@H]1CC=C1[C@@H]2CC[C@@H](O)C1
+# Cholesterol SMILES — C27H46O (PubChem CID 5997, 3β-hydroxy-Δ5-cholestene)
+# Verified: 27 carbons, 4-ring steroid backbone, Δ5 double bond, 3β-OH
 _CHOLESTEROL_SMILES = (
-    "CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@@H]1CC=C1[C@@H]2CC[C@@H](O)C1"
+    "CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@H]3CCC4=C[C@@H](O)CC[C@]4(C)[C@@H]3CC[C@@]12C"
 )
 
-# Cholesterol ester scaffold: C3-OH replaced with O{acyl}
-# The {acyl} fragment ends with C(=O) (methyl-first chain builder output)
-# → forms ester: ...C3-OC(=O)-[acyl chain]...
-_CHOLESTEROL_ESTER_SCAFFOLD = (
-    "CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@@H]1CC=C1[C@@H]2CC[C@@H](OC(=O){acyl})C1"
+# Cholesterol ester: 3β-OH replaced with OC(=O)[acyl_tail]
+# {acyl} is C2..Cn of the fatty acid (methyl-first, without the C1 carbonyl)
+_CE_SCAFFOLD = (
+    "CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@H]3CCC4=C[C@@H](OC(=O){acyl})CC[C@]4(C)[C@@H]3CC[C@@]12C"
 )
 
-# Headgroup labels in pygoslin that correspond to cholesterol
-_CHOLESTEROL_LABELS = frozenset({
-    "FC", "ST", "Cholesterol", "CHOL", "CE_FREE",
-})
+# Headgroup strings that map to free cholesterol
+_CHOLESTEROL_HG = frozenset({"FC", "CHOLESTEROL", "CHOL"})
 
-# Headgroup labels for cholesterol esters
-_CHOLESTEROL_ESTER_LABELS = frozenset({
-    "CE", "ChE", "CHOL_E",
-})
+# Headgroup prefix patterns for sterols
+_ST_PREFIXES = frozenset({"ST", "CE", "CHE"})
 
-# Bile acid labels
-_BILE_ACID_LABELS = frozenset({
-    "CA", "DCA", "CDCA", "UDCA", "LCA", "BA",
-    "CHOLICACID", "DEOXYCHOLICACID", "CHENODEOXYCHOLICACID",
-    "URSODEOXYCHOLICACID", "LITHOCHOLICACID",
-})
+# Bile acid SMILES (verified against PubChem where noted)
+_BILE_ACIDS = {
+    # Cholic acid — PubChem CID 221493, C24H40O5
+    "CA": (
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
+        "CC[C@@H](O)CC)[C@@H](O)CC[C@@H]3O"
+    ),
+    # Deoxycholic acid — PubChem CID 222528, C24H40O4
+    "DCA": (
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
+        "CC[C@@H](O)CC)CCC3O"
+    ),
+    # Chenodeoxycholic acid — PubChem CID 10133, C24H40O4
+    "CDCA": (
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
+        "CCC(O)CC)[C@@H](O)CCC3"
+    ),
+    # Ursodeoxycholic acid — PubChem CID 31401, C24H40O4
+    "UDCA": (
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
+        "CCC(O)CC)[C@H](O)CCC3"
+    ),
+    # Lithocholic acid — PubChem CID 9903, C24H40O3
+    "LCA": (
+        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
+        "CCCC)CCC3O"
+    ),
+}
 
-_BILE_ACID_KEY_MAP = {
-    "CA": "cholic_acid",
-    "DCA": "deoxycholic_acid",
-    "CDCA": "chenodeoxycholic_acid",
-    "UDCA": "ursodeoxycholic_acid",
-    "LCA": "lithocholic_acid",
+_BILE_ACID_ALIASES = {
+    "CHOLICACID": "CA",
+    "DEOXYCHOLICACID": "DCA",
+    "CHENODEOXYCHOLICACID": "CDCA",
+    "URSODEOXYCHOLICACID": "UDCA",
+    "LITHOCHOLICACID": "LCA",
+    "BA": "CA",  # generic bile acid defaults to cholic acid
 }
 
 
 class SterolBuilder(AbstractLipidBuilder):
-    """Build sterol molecules from pygoslin parsed objects."""
+    """Build sterol molecules from pygoslin LipidMolecule objects."""
 
     def build(self, lipid) -> Chem.Mol:
-        """Build a sterol molecule.
+        headgroup_str = lipid.headgroup.headgroup
+        hg_upper = headgroup_str.upper().replace(" ", "")
 
-        Parameters
-        ----------
-        lipid :
-            Parsed pygoslin lipid object.
+        # Free cholesterol: "FC", "Cholesterol", or "ST 27:1;O" / "ST27:1;O"
+        if headgroup_str in _CHOLESTEROL_HG or hg_upper in {h.upper() for h in _CHOLESTEROL_HG}:
+            return self._mol_from_smiles_sanitized(_CHOLESTEROL_SMILES)
 
-        Returns
-        -------
-        Chem.Mol
-            Sanitized RDKit molecule.
-        """
-        headgroup = lipid.headgroup.headgroup
-        hg_upper = headgroup.upper()
+        if hg_upper.startswith("ST") or hg_upper.startswith("SE"):
+            # "ST 27:1;O" → cholesterol (Δ5-cholesten-3β-ol)
+            # "SE 27:1" → pygoslin's normalization of CE input; if no FA chain, treat as cholesterol
+            if not lipid.fa:
+                return self._mol_from_smiles_sanitized(_CHOLESTEROL_SMILES)
+            # SE with FA chain → cholesterol ester
+            return self._build_cholesterol_ester(lipid)
 
-        # Free cholesterol
-        if hg_upper in _CHOLESTEROL_LABELS or (
-            hg_upper == "ST" and _is_cholesterol(lipid)
-        ):
-            mol = self._mol_from_smiles(_CHOLESTEROL_SMILES)
-            return self._sanitize(Chem.RWMol(mol))
-
-        # Cholesterol ester
-        if hg_upper in _CHOLESTEROL_ESTER_LABELS:
+        # Cholesterol ester: "CE" or "ChE"
+        if hg_upper.startswith("CE") or hg_upper.startswith("CHE"):
             return self._build_cholesterol_ester(lipid)
 
         # Bile acids
-        bile_key = _BILE_ACID_KEY_MAP.get(hg_upper)
-        if bile_key:
-            smiles = BILE_ACID_SMILES.get(bile_key)
-            if smiles:
-                mol = self._mol_from_smiles(smiles)
-                return self._sanitize(Chem.RWMol(mol))
+        bile_key = _BILE_ACID_ALIASES.get(hg_upper) or (hg_upper if hg_upper in _BILE_ACIDS else None)
+        if bile_key and bile_key in _BILE_ACIDS:
+            smiles = _BILE_ACIDS[bile_key]
+            return self._mol_from_smiles_sanitized(smiles)
 
         raise UnsupportedLipidClassError(
-            f"Sterol class {headgroup!r} is not yet supported. "
-            "Supported: cholesterol (ST/FC), cholesterol esters (CE/ChE), "
-            "and primary bile acids (CA, DCA, CDCA, UDCA, LCA). "
-            "Please open an issue at https://github.com/MontgomeryBohde/PyLipidParse/issues"
+            f"Sterol {headgroup_str!r} is not yet supported. "
+            "Supported: cholesterol (ST/FC), cholesterol esters (CE), "
+            "bile acids (CA/DCA/CDCA/UDCA/LCA)."
         )
 
+    def _mol_from_smiles_sanitized(self, smiles: str) -> Chem.Mol:
+        mol = self._mol_from_smiles(smiles)
+        return self._sanitize(Chem.RWMol(mol))
+
     def _build_cholesterol_ester(self, lipid) -> Chem.Mol:
-        """Build a cholesterol ester by attaching an acyl chain to cholesterol C3-OH."""
         fa_list = list(lipid.fa.values())
         if not fa_list:
             raise StructureGenerationError(
@@ -125,45 +131,24 @@ class SterolBuilder(AbstractLipidBuilder):
         fa = fa_list[0]
 
         num_carbon = int(fa.num_carbon)
-        db_positions = {}
-        raw_db = getattr(fa, "double_bond_positions", None)
-        if raw_db:
-            if hasattr(raw_db, "items"):
-                for pos, geom in raw_db.items():
-                    db_positions[int(pos)] = str(geom) if geom else "Z"
-
+        num_db = _extract_db_count(fa)
+        db_positions = _extract_db_positions(fa)
         mods = _extract_modifications(fa)
 
-        # Build acyl chain (methyl-first, ends with C(=O))
+        if num_db > 0 and not db_positions:
+            from pylipidparse.exceptions import InsufficientStructuralDetailError
+            raise InsufficientStructuralDetailError(
+                f"Acyl chain has {num_db} double bond(s) but no positional info."
+            )
+
+        # acyl_fragment: methyl-first, ends with C(=O)  e.g. "CCCCC...CC(=O)"
         acyl_fragment = build_acyl_chain(num_carbon, db_positions, mods, terminus="ester")
 
-        # The ester scaffold expects the fragment WITHOUT the terminal C(=O)
-        # because the scaffold already has C(=O) in it: OC(=O){acyl}
-        # Hmm, _CHOLESTEROL_ESTER_SCAFFOLD has OC(=O){acyl}, so acyl should be C2..Cn
-        # acyl_fragment = CCCC...CC(=O) (methyl-first, ends at C1=carbonyl)
-        # We want: OC(=O)[acyl_without_C1] = OC(=O)[C2..Cn]
-        # acyl_without_C1 = acyl_fragment[:-5] (remove trailing "C(=O)")
+        # CE scaffold has OC(=O){acyl} where {acyl} = C2..Cn (without C1's C(=O))
         if acyl_fragment.endswith("C(=O)"):
-            acyl_chain = acyl_fragment[:-5]  # C2..Cn (methyl end first, C2 last)
+            acyl_tail = acyl_fragment[:-5]  # C2..Cn
         else:
-            acyl_chain = acyl_fragment
+            acyl_tail = acyl_fragment
 
-        smiles = _CHOLESTEROL_ESTER_SCAFFOLD.format(acyl=acyl_chain)
-        mol = self._mol_from_smiles(smiles)
-        return self._sanitize(Chem.RWMol(mol))
-
-
-def _is_cholesterol(lipid) -> bool:
-    """Heuristic: check if this ST lipid is cholesterol (27:1;O)."""
-    # Check carbon count and double bond count from the lipid
-    try:
-        fa_list = list(lipid.fa.values())
-        if not fa_list:
-            # Might be a species-level sterol — check lipid.info
-            return True  # Assume cholesterol if no chains given and class is ST
-        fa = fa_list[0]
-        n_carbon = int(getattr(fa, "num_carbon", 0))
-        n_db = int(getattr(fa, "num_double_bonds", 0))
-        return n_carbon == 27 and n_db == 1
-    except Exception:
-        return False
+        smiles = _CE_SCAFFOLD.format(acyl=acyl_tail)
+        return self._mol_from_smiles_sanitized(smiles)

@@ -1,11 +1,12 @@
-"""Glycerolipid (GL) builder: MAG, DAG, TAG.
-
-Handles mono-, di-, and triacylglycerols with ester and ether linkages.
-"""
+"""Glycerolipid (GL) builder: MAG, DAG, TAG."""
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
-from pylipidparse.builders.fatty_acid import _extract_modifications
+from pylipidparse.builders.fatty_acid import (
+    _extract_db_count,
+    _extract_db_positions,
+    _extract_modifications,
+)
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
     StructureGenerationError,
@@ -14,118 +15,85 @@ from pylipidparse.exceptions import (
 from pylipidparse.scaffolds.headgroups import get_glycerolipid_scaffold
 from pylipidparse.utils.chain import build_acyl_chain, build_alkyl_chain
 
-# pygoslin FA bond type enum values (may vary by version)
-_ETHER_PLASMALOGEN = "ETHER_PLASMALOGEN"
-_ETHER_ALKYL = "ETHER_ALKYL"
-_ESTER = "ESTER"
-_NO_FA = "NO_FA"
+# LipidFaBondType enum name fragments (checked via str comparison for version safety)
+_BT_PLASMENYL = "PLASMENYL"   # ETHER_PLASMENYL = P- (plasmalogen)
+_BT_PLASMANYL = "PLASMANYL"   # ETHER_PLASMANYL = O- (alkyl ether)
+_BT_ETHER     = "ETHER"       # generic ether
+_BT_ESTER     = "ESTER"
+_BT_NO_FA     = "NO_FA"
+_BT_LCB       = "LCB"         # LCB_REGULAR or LCB_EXCEPTION
 
 
 def _get_bond_type(fa) -> str:
-    """Get the bond type string from a pygoslin FA object."""
+    """Return a normalised bond-type string from a pygoslin FA object."""
     bt = getattr(fa, "lipid_FA_bond_type", None)
     if bt is None:
-        return _ESTER
+        return _BT_ESTER
     bt_str = str(bt).upper()
-    if "PLASMALOGEN" in bt_str or bt_str.endswith("_P"):
-        return _ETHER_PLASMALOGEN
-    if "ALKYL" in bt_str or bt_str.endswith("_O"):
-        return _ETHER_ALKYL
-    if "NO_FA" in bt_str:
-        return _NO_FA
-    return _ESTER
-
-
-def _get_db_positions(fa) -> dict:
-    """Extract double bond positions from a pygoslin FA object."""
-    db_positions = {}
-    num_db = int(getattr(fa, "num_double_bonds", 0))
-    raw_db = getattr(fa, "double_bond_positions", None)
-
-    if raw_db:
-        if hasattr(raw_db, "get_positions"):
-            try:
-                for pos, geom in raw_db.get_positions().items():
-                    db_positions[int(pos)] = str(geom) if geom else "Z"
-            except AttributeError:
-                pass
-        elif hasattr(raw_db, "items"):
-            for pos, geom in raw_db.items():
-                db_positions[int(pos)] = str(geom) if geom else "Z"
-
-    if num_db > 0 and not db_positions:
-        raise InsufficientStructuralDetailError(
-            f"FA chain has {num_db} double bond(s) but no positional information. "
-            "Provide full structural notation with double bond positions."
-        )
-    return db_positions
+    if _BT_NO_FA in bt_str:
+        return _BT_NO_FA
+    if _BT_LCB in bt_str:
+        return _BT_LCB
+    if _BT_PLASMENYL in bt_str:
+        return _BT_PLASMENYL   # P- prefix
+    if _BT_PLASMANYL in bt_str:
+        return _BT_PLASMANYL   # O- prefix
+    if _BT_ETHER in bt_str:
+        return _BT_PLASMANYL   # generic ether treated as alkyl ether
+    return _BT_ESTER
 
 
 def _build_chain_fragment(fa, position_label: str = "") -> str:
-    """Build the chain SMILES fragment for one FA chain.
-
-    Returns the fragment ending at C1 (appropriate terminus for scaffold
-    substitution).
-    """
+    """Build the chain SMILES fragment for one FA chain."""
     bond_type = _get_bond_type(fa)
     num_carbon = int(fa.num_carbon)
-    db_positions = _get_db_positions(fa)
+    num_db = _extract_db_count(fa)
+    db_positions = _extract_db_positions(fa)
     mods = _extract_modifications(fa)
 
-    if bond_type == _ETHER_PLASMALOGEN:
-        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=True)
-    elif bond_type == _ETHER_ALKYL:
-        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=False)
-    elif bond_type == _ESTER:
-        return build_acyl_chain(num_carbon, db_positions, mods, terminus="ester")
-    elif bond_type == _NO_FA:
-        return ""  # This position is empty (lyso)
-    else:
-        raise UnsupportedLipidClassError(
-            f"Unsupported FA bond type: {bond_type!r} at position {position_label}"
+    if num_db > 0 and not db_positions:
+        raise InsufficientStructuralDetailError(
+            f"FA chain at {position_label} has {num_db} double bond(s) but "
+            "no positional info. Provide positions, e.g. '18:1(9Z)'."
         )
+
+    if bond_type == _BT_PLASMENYL:
+        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=True)
+    elif bond_type in (_BT_PLASMANYL,):
+        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=False)
+    elif bond_type == _BT_NO_FA:
+        return ""
+    else:  # ESTER or LCB
+        return build_acyl_chain(num_carbon, db_positions, mods, terminus="ester")
 
 
 class GlycerolipidBuilder(AbstractLipidBuilder):
-    """Build glycerolipid (MAG, DAG, TAG) molecules from pygoslin parsed objects."""
+    """Build glycerolipid molecules from pygoslin LipidMolecule objects."""
 
     def build(self, lipid) -> Chem.Mol:
-        """Build a glycerolipid molecule.
-
-        Parameters
-        ----------
-        lipid :
-            Parsed pygoslin lipid object.
-
-        Returns
-        -------
-        Chem.Mol
-            Sanitized RDKit molecule.
-        """
+        fa_dict = lipid.fa
         headgroup = lipid.headgroup.headgroup.upper()
-        fa_dict = lipid.fa  # dict like {"FA1": fa1, "FA2": fa2, ...} or {"sn1": ...}
 
-        # Determine which sn-positions are present and their chains
-        sn1_fa, sn2_fa, sn3_fa = _extract_sn_chains(fa_dict, headgroup)
+        # Detect unknown positions (underscore notation → pygoslin may not set positions)
+        sn1_fa, sn2_fa, sn3_fa = _extract_sn_chains(fa_dict)
 
-        sn1_present = sn1_fa is not None and _get_bond_type(sn1_fa) != _NO_FA
-        sn2_present = sn2_fa is not None and _get_bond_type(sn2_fa) != _NO_FA
-        sn3_present = sn3_fa is not None and _get_bond_type(sn3_fa) != _NO_FA
+        def _is_present(fa):
+            return fa is not None and _get_bond_type(fa) != _BT_NO_FA and int(fa.num_carbon) > 0
 
-        # Require known sn-positions for structure generation
-        # (underscore-separated unknown positions → raise error)
-        if not _has_known_positions(lipid):
+        sn1_present = _is_present(sn1_fa)
+        sn2_present = _is_present(sn2_fa)
+        sn3_present = _is_present(sn3_fa)
+
+        if not any([sn1_present, sn2_present, sn3_present]):
             raise InsufficientStructuralDetailError(
-                f"Cannot generate a unique structure for {lipid.headgroup.headgroup} "
-                "with unknown sn-positions (underscore notation). "
-                "Use slash notation to specify positions, e.g. 'TG 16:0/18:1/18:2'."
+                f"No sn-positioned chains found for {headgroup}. "
+                "Use slash notation, e.g. 'TG 16:0/18:1(9Z)/18:2(9Z,12Z)'."
             )
 
         scaffold = get_glycerolipid_scaffold(
             headgroup, sn1_present, sn2_present, sn3_present
         )
 
-        # Build chain fragments
         subs = {}
         if sn1_present:
             subs["sn1"] = _build_chain_fragment(sn1_fa, "sn1")
@@ -139,44 +107,26 @@ class GlycerolipidBuilder(AbstractLipidBuilder):
         return self._sanitize(Chem.RWMol(mol))
 
 
-def _has_known_positions(lipid) -> bool:
-    """Return True if all chain positions are known (slash notation in input)."""
-    # pygoslin tracks this via the 'level' or via the FA position info
-    # We check if any FA has position = 0 or unset, which indicates unknown
-    for fa in lipid.fa.values():
-        pos = getattr(fa, "position", -1)
-        # If position is -1 or 0 and there are multiple chains, positions are unknown
-        if pos is not None and int(pos) == -1:
-            return False
-    return True
+def _extract_sn_chains(fa_dict):
+    """Map pygoslin FA dict to (sn1, sn2, sn3) FA objects.
 
-
-def _extract_sn_chains(fa_dict, headgroup):
-    """Map the pygoslin FA dictionary to (sn1, sn2, sn3) FA objects.
-
-    pygoslin uses keys like "FA1", "FA2", "FA3" for glycerolipids.
-    For DG/TAG with known positions, the keys may have position metadata.
+    pygoslin uses keys "FA1", "FA2", "FA3" for glycerolipids.
     """
-    values = list(fa_dict.values())
-    keys = list(fa_dict.keys())
-
-    # Build a mapping from sn-position to FA object
     sn_map = {1: None, 2: None, 3: None}
 
-    for key, fa in zip(keys, values):
-        key_upper = str(key).upper()
-        # Try to determine position from key name
-        if "1" in key_upper or key_upper in ("FA1", "SN1", "FA_1"):
-            sn_map[1] = fa
-        elif "2" in key_upper or key_upper in ("FA2", "SN2", "FA_2"):
-            sn_map[2] = fa
-        elif "3" in key_upper or key_upper in ("FA3", "SN3", "FA_3"):
-            sn_map[3] = fa
-        else:
-            # Fall back: assign sequentially
-            for i in range(1, 4):
-                if sn_map[i] is None:
-                    sn_map[i] = fa
-                    break
+    for key, fa in fa_dict.items():
+        key_str = str(key).upper().replace("FA", "").replace("SN", "").strip("_- ")
+        try:
+            idx = int(key_str)
+            if idx in sn_map:
+                sn_map[idx] = fa
+                continue
+        except ValueError:
+            pass
+        # Fallback sequential assignment
+        for i in range(1, 4):
+            if sn_map[i] is None:
+                sn_map[i] = fa
+                break
 
     return sn_map[1], sn_map[2], sn_map[3]

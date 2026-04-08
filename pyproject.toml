@@ -56,6 +56,7 @@ packages = ["src/pylipidparse"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=pylipidparse --cov-report=term-missing -v"
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["src/pylipidparse"]

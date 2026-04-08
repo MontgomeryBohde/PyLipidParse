@@ -1,31 +1,29 @@
 """Sphingolipid (SP) builder.
 
-Handles ceramides (Cer), sphingomyelins (SM), and glycosphingolipids
-(HexCer, Hex2Cer, GlcCer, GalCer).
+pygoslin API for ceramides (confirmed):
+  - lipid.fa keys: 'LCB' (sphingoid base) and 'FA1' (N-acyl chain)
+  - LCB.num_carbon             → int
+  - LCB.double_bonds           → int (count only — no positions from pygoslin for LCB!)
+  - LCB.db_num()               → int
+  - LCB.functional_groups      → {'O': [FG(count=2, position=-1)]} for d-type (;O2)
+  - LCB.lipid_FA_bond_type     → LipidFaBondType.LCB_EXCEPTION or LCB_REGULAR
+  - FA1.num_carbon             → int
+  - FA1.double_bonds           → int or dict
+  - FA1.lipid_FA_bond_type     → ESTER
 
-Sphingolipid anatomy
---------------------
-A sphingolipid consists of:
-1. A **sphingoid base** (long-chain amino alcohol, e.g. sphingosine d18:1)
-2. An **N-acyl chain** (fatty acid attached via amide bond to C2-NH2)
-3. A **headgroup** at C1-OH (phosphocholine for SM, sugars for glycolipids)
-
-Sphingoid base notation
------------------------
-- ``d18:1`` = dihydrosphingosine: 18C, 1 double bond, 2 OH groups (at C1 and C3)
-  with the double bond at C4 in the 4E configuration (trans)
-  Stereochemistry: (2S,3R,4E) — natural d-erythro form
-- ``d18:0`` = dihydrosphingosine: 18C, 0 double bonds, 2 OH groups
-- ``t18:0`` = phytosphingosine: 18C, 0 double bonds, 3 OH groups (C1, C3, C4)
-
-In LIPID MAPS notation:
-- ``Cer 18:1;O2/16:0`` means sphingoid base 18:1 with 2 oxygens / N-acyl 16:0
-- ``Cer d18:1/16:0`` uses the legacy 'd' prefix
+Since pygoslin does NOT give double bond positions for the LCB, we apply
+biological defaults:
+  - 1 double bond → position 4, geometry E (standard d-erythro sphingosine)
+  - 0 double bonds → no double bond (dihydrosphingosine)
 """
 from rdkit import Chem
 
 from pylipidparse.builders.base import AbstractLipidBuilder
-from pylipidparse.builders.fatty_acid import _extract_modifications
+from pylipidparse.builders.fatty_acid import (
+    _extract_db_count,
+    _extract_db_positions,
+    _extract_modifications,
+)
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
     StructureGenerationError,
@@ -35,306 +33,204 @@ from pylipidparse.scaffolds.headgroups import SPHINGOLIPID_HEADGROUPS
 from pylipidparse.utils.chain import build_acyl_chain
 
 
-def _build_sphingoid_base_template(n_carbon: int, n_oh: int, db_pos_dict: dict) -> str:
-    """Build the sphingoid base SMILES portion (without N-acyl and headgroup).
+def _get_lcb_n_oh(lcb_fa) -> int:
+    """Return number of hydroxyl groups on the LCB.
 
-    Returns a template string with ``{N_ACYL}`` placeholder at C2-N and
-    ``{C1_OH}`` placeholder at C1-OH.
-
-    Covers the most common cases:
-    - d-type (2 OH): d18:1(4E), d18:0, d20:1(4E)
-    - t-type (3 OH): t18:0
-
-    Parameters
-    ----------
-    n_carbon : int
-        Total carbons in the sphingoid base.
-    n_oh : int
-        Number of hydroxyl groups (2 = d-type, 3 = t-type).
-    db_pos_dict : dict
-        Double bond positions (same convention as chain builder).
-
-    Returns
-    -------
-    str
-        SMILES with {N_ACYL} and {C1_HEAD} placeholders.
+    pygoslin encodes this via functional_groups: {'O': [FG(count=N)]}.
     """
-    # The sphingoid base is built from the methyl end:
-    # Cn ... C5 - C4=C3/... - C3(OH) - C2(NH...) - C1(OH/head)
-    #
-    # Tail length: C5 to Cn = (n_carbon - 4) carbons for d-type with 4E double bond
-    # For d-type with 4E double bond: C4=C5 (positions 4 and 5 from C1)
-    # The "tail" is C5..Cn, then /C=C\ connects C5 to C4, etc.
-    #
-    # Standard d-erythro-sphingosine (d18:1(4E)):
-    # SMILES (methyl-first): CCCCCCCCCCCCC/C=C/[C@H](O)[C@@H]({N_ACYL}){C1_HEAD}
-    # Where: C18..C6 = CCCCCCCCCCCCC (13 carbons)
-    #        /C=C/   = C5=C4 (4E = trans)
-    #        [C@H](O) = C3-OH (3R)
-    #        [C@@H]({N_ACYL}) = C2-N (2S)
-    #        {C1_HEAD} = C1 attachment
+    raw = getattr(lcb_fa, "functional_groups", {}) or {}
+    for name, fg_list in raw.items():
+        if str(name).upper() in ("O", "OH"):
+            total = sum(int(getattr(fg, "count", 1)) for fg in fg_list)
+            if total > 0:
+                return total
 
+    # Fallback: check num_oxygens if available
+    try:
+        n = lcb_fa.num_oxygens()
+        if n and int(n) > 0:
+            return int(n)
+    except (TypeError, AttributeError):
+        pass
+
+    return 2  # default: d-type (2 OH groups)
+
+
+def _build_sphingoid_base_smiles(n_carbon: int, n_oh: int, n_db: int) -> str:
+    """Build the sphingoid base SMILES in methyl-first format.
+
+    Returns a template string where:
+    - {N_ACYL}  = what goes on C2 nitrogen (e.g. "NC(=O)CCCCC..." or just "N")
+    - {C1_HEAD} = the C1 atom with its headgroup substituent (e.g. "CO" for free OH)
+
+    Biological defaults used:
+    - d-type (n_oh=2): C1-OH, C3-OH, C4=C5 (4E trans) for n_db=1
+    - t-type (n_oh=3): C1-OH, C3-OH, C4-OH, no double bond
+    - m-type (n_oh=1): C1-OH only
+    """
     if n_oh == 3:
-        # t-type (phytosphingosine): 3 OH at C1, C3, C4; no double bond
-        # Structure: C1(OH) - C2(N) - C3(OH) - C4(OH) - C5 - ... - Cn
+        # Phytosphingosine: C3-OH, C4-OH, no canonical double bond
+        # Structure (methyl-first): Cn...C5-C4(OH)-C3(OH)-C2(N)-C1(OH/head)
         tail_n = n_carbon - 4
         tail = "C" * tail_n
-        return (
-            f"{tail}[C@@H](O)[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
-        )
+        return f"{tail}[C@@H](O)[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
 
     elif n_oh == 2:
-        # d-type: 2 OH at C1 and C3; double bond position from db_pos_dict
-        # Most common: 4E double bond
-        if 4 in db_pos_dict:
-            # Standard sphingosine-type: 4E double bond
-            # Tail: C6..Cn (n_carbon - 5 carbons)
-            tail_n = n_carbon - 5
-            tail = "C" * tail_n
-            geom = db_pos_dict[4]
-            # 4E = trans = /C=C/ in SMILES (see chain.py notes)
-            bond_geom = "/C=C/" if geom == "E" else "/C=C\\"
-            return (
-                f"{tail}{bond_geom}[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
-            )
-        elif not db_pos_dict:
-            # Dihydrosphingosine (d18:0): no double bond
+        # Standard d-type sphingosine or dihydrosphingosine
+        if n_db == 0:
+            # Dihydrosphingosine: no double bond
+            # Cn...C4-C3(OH)-C2(N)-C1(OH/head)
             tail_n = n_carbon - 3
             tail = "C" * tail_n
-            return (
-                f"{tail}[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
-            )
+            return f"{tail}[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
         else:
-            # Other double bond position (unusual)
-            # Fall through to generic handler
-            tail_n = n_carbon - 3
+            # Sphingosine: 4E double bond (standard biological default)
+            # Cn...C6-C5=C4-C3(OH)-C2(N)-C1(OH/head)   [4E = trans = /C=C/]
+            tail_n = n_carbon - 5
+            if tail_n < 0:
+                raise StructureGenerationError(
+                    f"Sphingoid base too short ({n_carbon}C) for d-type with double bond."
+                )
             tail = "C" * tail_n
-            # TODO: handle non-C4 double bonds in sphingoid bases
-            return (
-                f"{tail}[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
-            )
+            return f"{tail}/C=C/[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
 
     elif n_oh == 1:
-        # m-type (monohydro): 1 OH at C1 only
+        # m-type: C1-OH only
         tail_n = n_carbon - 2
         tail = "C" * tail_n
         return f"{tail}[C@@H]({{N_ACYL}}){{C1_HEAD}}"
 
     else:
         raise UnsupportedLipidClassError(
-            f"Unsupported sphingoid base with {n_oh} hydroxyl groups. "
-            "Supported: 1 (m-type), 2 (d-type), 3 (t-type)."
+            f"Unsupported sphingoid base: {n_carbon}:{n_db};O{n_oh}. "
+            "Supported: O1 (m), O2 (d), O3 (t)."
         )
 
 
+def _lcb_has_sugar(lcb_fa) -> bool:
+    """Return True if the LCB has a sugar group ([X] FG), i.e. it's a glycosphingolipid."""
+    raw = getattr(lcb_fa, "functional_groups", {}) or {}
+    return any(str(name) == "[X]" for name in raw)
+
+
+def _promote_unlocalized_mods(fa, mods: dict) -> dict:
+    """Add unlocalized modifications (position <= 0) at the α-carbon (position 2).
+
+    pygoslin reports e.g. ';OH' without a position as FG(position=-1). These would
+    be silently skipped by _extract_modifications. Here we assign them to C2 (α-OH),
+    the most common hydroxylation site in ceramide fatty acids.
+    """
+    raw = getattr(fa, "functional_groups", {}) or {}
+    promoted = dict(mods)
+    for name, fg_list in raw.items():
+        name_upper = str(name).upper()
+        if name_upper not in ("OH", "O"):
+            continue
+        for fg in fg_list:
+            pos = getattr(fg, "position", -1)
+            if pos is not None and int(pos) <= 0:
+                # Unlocalized: default to α-carbon (C2)
+                if 2 not in promoted:
+                    promoted[2] = "OH"
+    return promoted
+
+
 class SphingolipidBuilder(AbstractLipidBuilder):
-    """Build sphingolipid molecules from pygoslin parsed objects."""
+    """Build sphingolipid molecules from pygoslin LipidMolecule objects."""
 
     def build(self, lipid) -> Chem.Mol:
-        """Build a sphingolipid molecule.
-
-        Parameters
-        ----------
-        lipid :
-            Parsed pygoslin lipid object.
-
-        Returns
-        -------
-        Chem.Mol
-            Sanitized RDKit molecule.
-        """
         headgroup = lipid.headgroup.headgroup
         fa_dict = lipid.fa
 
-        # Extract sphingoid base (LCB) and N-acyl chain
         lcb_fa, nacyl_fa = _extract_sp_chains(fa_dict)
 
         if lcb_fa is None:
             raise StructureGenerationError(
-                f"Could not identify sphingoid base (LCB) in {headgroup} lipid."
+                f"Could not identify sphingoid base (LCB) in {headgroup}."
             )
 
-        # Build sphingoid base SMILES
+        # Sphingoid base parameters
         lcb_n_carbon = int(lcb_fa.num_carbon)
-        lcb_n_db = int(getattr(lcb_fa, "num_double_bonds", 0))
-        lcb_db_pos = _get_lcb_db_positions(lcb_fa)
+        lcb_n_db = _extract_db_count(lcb_fa)
         lcb_n_oh = _get_lcb_n_oh(lcb_fa)
 
-        if lcb_n_db > 0 and not lcb_db_pos:
-            raise InsufficientStructuralDetailError(
-                f"Sphingoid base has {lcb_n_db} double bond(s) but no positional info. "
-                "Provide full structural notation, e.g. 'Cer 18:1;O2/16:0'."
-            )
-
-        # Build N-acyl chain fragment (or handle free base)
-        if nacyl_fa is not None:
+        # Build N-acyl part
+        if nacyl_fa is not None and int(nacyl_fa.num_carbon) > 0:
             nacyl_n_carbon = int(nacyl_fa.num_carbon)
-            nacyl_n_db = int(getattr(nacyl_fa, "num_double_bonds", 0))
-            nacyl_db_pos = _get_nacyl_db_positions(nacyl_fa)
+            nacyl_n_db = _extract_db_count(nacyl_fa)
+            nacyl_db_pos = _extract_db_positions(nacyl_fa)
             nacyl_mods = _extract_modifications(nacyl_fa)
+            # Promote unlocalized OH modifications to a default position (α-OH = pos 2)
+            nacyl_mods = _promote_unlocalized_mods(nacyl_fa, nacyl_mods)
 
             if nacyl_n_db > 0 and not nacyl_db_pos:
                 raise InsufficientStructuralDetailError(
                     f"N-acyl chain has {nacyl_n_db} double bond(s) but no positional info."
                 )
 
-            # N-acyl chain fragment: methyl-first, ends with C(=O)
-            nacyl_fragment = build_acyl_chain(
+            # Build acyl chain: methyl-first ending with C(=O)
+            # e.g. for 16:0: "CCCCCCCCCCCCCCCC(=O)"
+            acyl_fragment = build_acyl_chain(
                 nacyl_n_carbon, nacyl_db_pos, nacyl_mods, terminus="ester"
             )
-            n_acyl_smiles = f"NC(=O){nacyl_fragment[:-5]}" if nacyl_fragment.endswith("C(=O)") else f"NC(=O){nacyl_fragment}"
-            # Actually, build_acyl_chain terminus='ester' ends with C(=O)
-            # Fragment looks like: CCCCC...CC(=O)
-            # We want: N-C(=O)-CCCCC...C (amide bond)
-            # For SMILES substitution into sphingoid base template:
-            # {N_ACYL} → NC(=O)[nacyl_chain_without_C1]
-            # build_acyl_chain returns methyl-first chain ending at C(=O) at C1
-            # So nacyl_fragment = "CCCC...CC(=O)" where the last C(=O) is C1
-            # In the sphingoid base: [C@@H]({N_ACYL}) needs {N_ACYL} = N-substituent
-            # {N_ACYL} = NC(=O)CCCCC...C (N followed by amide followed by C2..Cn methyl-first)
-            # Note: nacyl_fragment already has C(=O) at the end (which is C1 of the acyl chain)
-            # We need: NC(=O)[C2..Cn] where C2..Cn is the chain minus C1
-            # nacyl_fragment = CCCC..CC(=O)
-            # The C2..Cn part = nacyl_fragment[:-5] = all but the last "(=O)"... hmm
-            # Actually: nacyl_fragment = "CCCCCCCCCCCCCCCC(=O)" for 16:0
-            # The "CCCCCCCCCCCCCCC" part is C2-C16 (15 carbons)
-            # We want: NC(=O)CCCCCCCCCCCCCCC (amide to C2-C16 from C1)
-            # = "N" + "C(=O)" + C2-C16
-            # nacyl_fragment already is methyl-first: C16...C2-C1(=O)
-            # So: {N_ACYL} = N-C(=O)[C16..C2] but the nacyl_fragment is C16..C2-C1(=O)
-            # = we can use: {N_ACYL} = "N" + nacyl_fragment (since the C(=O) is at the end)
-            # [C@@H](NC(=O)CCCC...C) — YES! This works because nacyl_fragment = CCCC...CC(=O)
-            # becomes [C@@H](NCCCC...CC(=O)) = [C@@H](N-C16-C15-...-C2-C1(=O)) ← WRONG ORDER
-            # The amide N connects to C1 (carbonyl C), not to Cn!
-            # So we need: [C@@H](NC(=O)CCCCCC) = N is bonded to C(=O) which is C1
-            # The nacyl_fragment in methyl-first is: CCCCCC(=O) = C16..C2-C1(=O)
-            # In SMILES for N-acyl: N-C(=O)-C2-...-C16 = NC(=O)[C2..Cn methyl direction]
-            # nacyl_fragment = "CCCCCC...CC(=O)" = Cn..C2-C1(=O)
-            # For the amide: N-C1(=O)-C2-...-Cn = NC(=O)C2...Cn
-            # But our fragment is reversed: C16..C2-C(=O) from methyl
-            # We want: NC(=O)[same fragment without the terminal C(=O)]...
-
-            # The cleanest fix: build the nacyl chain in COOH-first order for amides
-            # OR: just concatenate as N + nacyl_fragment since SMILES reads left to right
-            # NC(=O)CCCCCCCCCCCCCCCC means: N bonded to C(=O) bonded to C16..C1?
-            # Actually NC(=O)CCCC = N-C(=O)-C-C-C = N-amide-C3-C2-... NO
-            # In SMILES, NC(=O)CCCC: N → C(=O) → C → C → C → C
-            # The C(=O) here is at position 2 in the string. After C(=O), we have CCCC.
-            # So N-C(=O) is the amide, and CCCC is C2..C5 (from the acyl C1 carbonyl).
-            # This means nacyl_fragment needs to be: C2..Cn (methyl end last)
-            # But our nacyl_fragment from build_acyl_chain(terminus='ester') is: Cn..C2-C1(=O)
-            # i.e., methyl end first, carboxyl end last.
-            # For an amide: N-C1(=O)-C2-...-Cn
-            # We need: NC(=O)[C2..Cn] where [C2..Cn] is the non-C1 part of the chain
-            # nacyl_fragment = CCCCCCCCCCCCCCCC(=O) for 16:0
-            # To get C2..C16 fragment: nacyl_fragment[:-5] = "CCCCCCCCCCCCCCC" (15 carbons) ← correct!
-            # Because the last 5 chars of CCCCCCCCCCCCCCCC(=O) are "C(=O)" = C1
-            # So C2..C16 = nacyl_fragment[:-5]
-
-            if nacyl_fragment.endswith("C(=O)"):
-                chain_without_c1 = nacyl_fragment[:-5]  # Remove terminal C(=O) = C1
-                n_acyl_part = f"NC(=O){chain_without_c1}"
+            # N-acyl SMILES: N bonded to C1(=O) which is at the end of acyl_fragment
+            # acyl_fragment = "CCCC...CC(=O)"  (methyl→C1, C1=carbonyl)
+            # We want: NC(=O)[C2..Cn]
+            # The C(=O) is the last 5 chars; C2..Cn = acyl_fragment[:-5]
+            if acyl_fragment.endswith("C(=O)"):
+                chain_tail = acyl_fragment[:-5]  # C2..Cn (methyl end first)
+                n_acyl_part = f"NC(=O){chain_tail}"
             else:
-                # Fallback
-                n_acyl_part = f"NC(=O){nacyl_fragment}"
+                n_acyl_part = f"NC(=O){acyl_fragment}"
         else:
-            n_acyl_part = "N"  # Free amine (sphingoid base only)
+            n_acyl_part = "N"  # Free sphingoid base
 
-        # Determine headgroup attachment at C1-OH
-        hg_key = headgroup
-        if hg_key not in SPHINGOLIPID_HEADGROUPS:
+        # Resolve headgroup: pygoslin normalizes HexCer/GlcCer/GalCer to 'Cer'
+        # with an '[X]' functional group on the LCB marking the sugar attachment.
+        resolved_hg = headgroup
+        if headgroup == "Cer" and _lcb_has_sugar(lcb_fa):
+            resolved_hg = "HexCer"
+
+        # Headgroup at C1-OH
+        if resolved_hg not in SPHINGOLIPID_HEADGROUPS:
             raise UnsupportedLipidClassError(
                 f"Sphingolipid headgroup {headgroup!r} is not yet supported. "
                 f"Supported: {sorted(SPHINGOLIPID_HEADGROUPS.keys())}"
             )
-        c1_head = SPHINGOLIPID_HEADGROUPS[hg_key]
-        # c1_head is the group at C1-OH; for Cer it's just 'O' (free OH)
-        # For SM it's 'OP(=O)([O-])OCC[N+](C)(C)C'
-        # The C1 atom in the template is: C{C1_HEAD} = CO (for Cer) or C-OP... (for SM)
-        c1_smiles = f"C{c1_head}"  # The C1 carbon with its substituent
+        c1_substituent = SPHINGOLIPID_HEADGROUPS[resolved_hg]
+        # C1 in the template is: C{substituent}
+        # For Cer: substituent = "O"  → C1 = "CO" = primary alcohol
+        # For SM:  substituent = "OP(=O)..." → C1 = "COP(=O)..."
+        c1_smiles = f"C{c1_substituent}"
 
-        # Build the complete sphingoid base + modification
-        base_template = _build_sphingoid_base_template(
-            lcb_n_carbon, lcb_n_oh, lcb_db_pos
-        )
-
-        # Fill in the template
+        # Build base template and fill placeholders
+        base_template = _build_sphingoid_base_smiles(lcb_n_carbon, lcb_n_oh, lcb_n_db)
         smiles = base_template.format(N_ACYL=n_acyl_part, C1_HEAD=c1_smiles)
 
         mol = self._mol_from_smiles(smiles)
         return self._sanitize(Chem.RWMol(mol))
 
 
-def _get_lcb_db_positions(lcb_fa) -> dict:
-    """Extract double bond positions from the sphingoid base FA."""
-    db_positions = {}
-    raw_db = getattr(lcb_fa, "double_bond_positions", None)
-    if raw_db:
-        if hasattr(raw_db, "get_positions"):
-            try:
-                for pos, geom in raw_db.get_positions().items():
-                    db_positions[int(pos)] = str(geom) if geom else "E"
-            except AttributeError:
-                pass
-        elif hasattr(raw_db, "items"):
-            for pos, geom in raw_db.items():
-                db_positions[int(pos)] = str(geom) if geom else "E"
-    return db_positions
-
-
-def _get_nacyl_db_positions(nacyl_fa) -> dict:
-    """Extract double bond positions from the N-acyl FA."""
-    db_positions = {}
-    raw_db = getattr(nacyl_fa, "double_bond_positions", None)
-    if raw_db:
-        if hasattr(raw_db, "get_positions"):
-            try:
-                for pos, geom in raw_db.get_positions().items():
-                    db_positions[int(pos)] = str(geom) if geom else "Z"
-            except AttributeError:
-                pass
-        elif hasattr(raw_db, "items"):
-            for pos, geom in raw_db.items():
-                db_positions[int(pos)] = str(geom) if geom else "Z"
-    return db_positions
-
-
-def _get_lcb_n_oh(lcb_fa) -> int:
-    """Determine the number of hydroxyl groups on the sphingoid base."""
-    # pygoslin represents this via num_hydroxyl or through ;O2 notation
-    n_oh = getattr(lcb_fa, "num_hydroxyl", None)
-    if n_oh is not None and int(n_oh) > 0:
-        return int(n_oh)
-
-    # Try to infer from modifications
-    mods = _extract_modifications(lcb_fa)
-    n_oh_mods = sum(1 for m in mods.values() if m == "OH")
-    if n_oh_mods > 0:
-        return n_oh_mods
-
-    # Default: d-type (2 OH) is standard for most ceramides
-    return 2
-
-
 def _extract_sp_chains(fa_dict):
-    """Extract LCB (sphingoid base) and N-acyl FA from pygoslin FA dict.
-
-    pygoslin uses "LCB" key for the sphingoid base and "FA1" for the N-acyl chain.
-    """
+    """Extract LCB and N-acyl FA objects from pygoslin FA dict."""
     lcb = None
     nacyl = None
 
     for key, fa in fa_dict.items():
         key_upper = str(key).upper()
-        if "LCB" in key_upper or key_upper == "SPB":
+        if "LCB" in key_upper or "SPB" in key_upper:
             lcb = fa
-        elif "FA" in key_upper or key_upper in ("NACYL", "FA1"):
-            nacyl = fa
         else:
-            # Fallback assignment
-            if lcb is None:
-                lcb = fa
-            else:
+            # "FA1" or any non-LCB key → N-acyl chain
+            if nacyl is None:
                 nacyl = fa
+
+    # Fallback: if no LCB key found, first FA is LCB, second is N-acyl
+    if lcb is None:
+        values = list(fa_dict.values())
+        if values:
+            lcb = values[0]
+        if len(values) > 1:
+            nacyl = values[1]
 
     return lcb, nacyl

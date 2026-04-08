@@ -47,10 +47,13 @@ _SP_CLASSES = frozenset({
 })
 
 _ST_CLASSES = frozenset({
-    "ST", "FC", "CE", "ChE",
+    "ST", "SE", "FC", "CE", "ChE",
     "Cholesterol",
     "BA", "CA", "DCA", "CDCA", "UDCA", "LCA",
 })
+
+# Names that are synonyms for free cholesterol and cannot be parsed by pygoslin
+_CHOLESTEROL_SYNONYMS = frozenset({"FC", "CHOLESTEROL", "CHOL"})
 
 
 class LipidConverter:
@@ -100,13 +103,17 @@ class LipidConverter:
     def _parse(self, lipid_name: str):
         """Parse a lipid name with pygoslin."""
         parser = self._get_parser()
-        lipid = parser.parse(lipid_name.strip())
+        _msg = (
+            f"Could not parse lipid: {lipid_name!r}\n"
+            "Ensure the name follows LIPID MAPS shorthand notation, "
+            "e.g. 'PC 16:0/18:1(9Z)', 'FA 18:2(9Z,12Z)', 'Cer 18:1;O2/16:0'."
+        )
+        try:
+            lipid = parser.parse(lipid_name.strip())
+        except Exception as exc:
+            raise LipidParseError(_msg) from exc
         if lipid is None:
-            raise LipidParseError(
-                f"Could not parse lipid: {lipid_name!r}\n"
-                "Ensure the name follows LIPID MAPS shorthand notation, "
-                "e.g. 'PC 16:0/18:1(9Z)', 'FA 18:2(9Z,12Z)', 'Cer 18:1;O2/16:0'."
-            )
+            raise LipidParseError(_msg)
         return lipid
 
     def _get_mol(self, lipid_name: str) -> Chem.Mol:
@@ -114,13 +121,37 @@ class LipidConverter:
         if lipid_name in self._cache:
             return self._cache[lipid_name]
 
-        lipid = self._parse(lipid_name)
-        mol = self._dispatch(lipid)
+        # Free cholesterol synonyms pygoslin cannot parse — short-circuit directly
+        if lipid_name.strip().upper() in _CHOLESTEROL_SYNONYMS:
+            from pylipidparse.builders.sterol import _CHOLESTEROL_SMILES
+            mol = Chem.MolFromSmiles(_CHOLESTEROL_SMILES)
+            from rdkit.Chem import SanitizeMol
+            SanitizeMol(mol)
+            if self._cache_size > 0:
+                if len(self._cache) >= self._cache_size:
+                    del self._cache[next(iter(self._cache))]
+                self._cache[lipid_name] = mol
+            return mol
+
+        lipid_adduct = self._parse(lipid_name)
+        # lipid_adduct.lipid is LipidMolecule/LipidSpecies; builders receive this
+        lipid_mol = lipid_adduct.lipid
+
+        # Species-level lipids have no .fa attribute — can't generate a unique structure
+        if not hasattr(lipid_mol, "fa"):
+            from pylipidparse.exceptions import InsufficientStructuralDetailError
+            raise InsufficientStructuralDetailError(
+                f"Cannot generate a unique structure for {lipid_name!r}. "
+                "The input is species-level (sum composition) — it does not specify "
+                "individual fatty acid chains. Use full structural notation, "
+                "e.g. 'PC 16:0/18:1(9Z)' instead of 'PC 34:1'."
+            )
+
+        mol = self._dispatch(lipid_mol)
 
         # LRU eviction: if cache is full, remove the oldest entry
         if self._cache_size > 0:
             if len(self._cache) >= self._cache_size:
-                # Remove the oldest key (insertion order preserved in Python 3.7+)
                 oldest_key = next(iter(self._cache))
                 del self._cache[oldest_key]
             self._cache[lipid_name] = mol
@@ -128,27 +159,32 @@ class LipidConverter:
         return mol
 
     def _dispatch(self, lipid) -> Chem.Mol:
-        """Dispatch to the correct builder based on lipid class."""
-        headgroup = lipid.headgroup.headgroup
-        hg_upper = headgroup.upper()
+        """Dispatch to the correct builder based on lipid class.
 
-        if hg_upper in {c.upper() for c in _FA_CLASSES}:
+        ``lipid`` is ``lipid_adduct.lipid`` — a LipidMolecule object with
+        ``.headgroup.headgroup`` (str) and ``.fa`` (dict).
+        """
+        headgroup = lipid.headgroup.headgroup
+        # ST headgroup strings can be "ST 27:1;O" (full notation) — extract the class prefix
+        hg_class = headgroup.split()[0].upper()
+
+        if hg_class in {c.upper() for c in _FA_CLASSES}:
             from pylipidparse.builders.fatty_acid import FattyAcidBuilder
             return FattyAcidBuilder().build(lipid)
 
-        if hg_upper in {c.upper() for c in _GL_CLASSES}:
+        if hg_class in {c.upper() for c in _GL_CLASSES}:
             from pylipidparse.builders.glycerolipid import GlycerolipidBuilder
             return GlycerolipidBuilder().build(lipid)
 
-        if hg_upper in {c.upper() for c in _GP_CLASSES}:
+        if hg_class in {c.upper() for c in _GP_CLASSES}:
             from pylipidparse.builders.glycerophospholipid import GlycerophospholipidBuilder
             return GlycerophospholipidBuilder().build(lipid)
 
-        if hg_upper in {c.upper() for c in _SP_CLASSES}:
+        if hg_class in {c.upper() for c in _SP_CLASSES}:
             from pylipidparse.builders.sphingolipid import SphingolipidBuilder
             return SphingolipidBuilder().build(lipid)
 
-        if hg_upper in {c.upper() for c in _ST_CLASSES}:
+        if hg_class in {c.upper() for c in _ST_CLASSES}:
             from pylipidparse.builders.sterol import SterolBuilder
             return SterolBuilder().build(lipid)
 

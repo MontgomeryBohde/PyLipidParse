@@ -27,7 +27,7 @@ class TestGPFormulas:
         # PI
         ("PI 16:0/18:1(9Z)", "C43H81O13P"),
         # PS
-        ("PS 16:0/18:1(9Z)", "C42H80NO10P"),
+        ("PS 16:0/18:1(9Z)", "C40H76NO10P"),
         # PG
         ("PG 16:0/18:1(9Z)", "C40H77O10P"),
     ])

@@ -72,48 +72,48 @@ GLYCEROLIPID_SCAFFOLDS: Dict[str, str] = {
 # The choline nitrogen in PC is shown as [N+](C)(C)C (quaternary ammonium).
 
 GLYCEROPHOSPHOLIPID_SCAFFOLDS: Dict[str, str] = {
-    # PC: phosphatidylcholine
+    # PC: phosphatidylcholine — zwitterionic (P- and N+ cancel; neutral net charge)
     "PC": "{sn1}OC[C@@H](O{sn2})COP(=O)([O-])OCC[N+](C)(C)C",
-    # PE: phosphatidylethanolamine
-    "PE": "{sn1}OC[C@@H](O{sn2})COP(=O)([O-])OCCN",
-    # PA: phosphatidic acid
-    "PA": "{sn1}OC[C@@H](O{sn2})COP(=O)([O-])[O-]",
-    # PI: phosphatidylinositol (inositol ring with natural D-myo configuration)
+    # PE: phosphatidylethanolamine — neutral protonated form
+    "PE": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OCCN",
+    # PA: phosphatidic acid — neutral (diprotonated phosphate monoester)
+    "PA": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)O",
+    # PI: phosphatidylinositol — neutral
     "PI": (
-        "{sn1}OC[C@@H](O{sn2})COP(=O)([O-])"
+        "{sn1}OC[C@@H](O{sn2})COP(=O)(O)"
         "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"
     ),
-    # PS: phosphatidylserine
-    "PS": "{sn1}OC[C@@H](O{sn2})COP(=O)([O-])OC[C@@H](N)C(=O)O",
-    # PG: phosphatidylglycerol
-    "PG": "{sn1}OC[C@@H](O{sn2})COP(=O)([O-])OC[C@@H](O)CO",
+    # PS: phosphatidylserine — neutral
+    "PS": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](N)C(=O)O",
+    # PG: phosphatidylglycerol — neutral
+    "PG": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](O)CO",
     # Lyso variants: one chain position = free OH
-    # LPC sn-1 occupied, sn-2 = OH
+    # LPC sn-1 occupied, sn-2 = OH (zwitterionic)
     "LPC_SN1": "{sn1}OC[C@@H](O)COP(=O)([O-])OCC[N+](C)(C)C",
-    # LPC sn-2 occupied, sn-1 = OH
+    # LPC sn-2 occupied, sn-1 = OH (zwitterionic)
     "LPC_SN2": "OC[C@@H](O{sn2})COP(=O)([O-])OCC[N+](C)(C)C",
-    # LPE sn-1 occupied, sn-2 = OH
-    "LPE_SN1": "{sn1}OC[C@@H](O)COP(=O)([O-])OCCN",
-    # LPE sn-2 occupied, sn-1 = OH
-    "LPE_SN2": "OC[C@@H](O{sn2})COP(=O)([O-])OCCN",
-    # LPA sn-1
-    "LPA_SN1": "{sn1}OC[C@@H](O)COP(=O)([O-])[O-]",
-    "LPA_SN2": "OC[C@@H](O{sn2})COP(=O)([O-])[O-]",
-    # LPI sn-1
+    # LPE sn-1 occupied, sn-2 = OH — neutral
+    "LPE_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OCCN",
+    # LPE sn-2 occupied, sn-1 = OH — neutral
+    "LPE_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OCCN",
+    # LPA sn-1 — neutral
+    "LPA_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)O",
+    "LPA_SN2": "OC[C@@H](O{sn2})COP(=O)(O)O",
+    # LPI sn-1 — neutral
     "LPI_SN1": (
-        "{sn1}OC[C@@H](O)COP(=O)([O-])"
+        "{sn1}OC[C@@H](O)COP(=O)(O)"
         "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"
     ),
     "LPI_SN2": (
-        "OC[C@@H](O{sn2})COP(=O)([O-])"
+        "OC[C@@H](O{sn2})COP(=O)(O)"
         "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"
     ),
-    # LPS sn-1
-    "LPS_SN1": "{sn1}OC[C@@H](O)COP(=O)([O-])OC[C@@H](N)C(=O)O",
-    "LPS_SN2": "OC[C@@H](O{sn2})COP(=O)([O-])OC[C@@H](N)C(=O)O",
-    # LPG sn-1
-    "LPG_SN1": "{sn1}OC[C@@H](O)COP(=O)([O-])OC[C@@H](O)CO",
-    "LPG_SN2": "OC[C@@H](O{sn2})COP(=O)([O-])OC[C@@H](O)CO",
+    # LPS sn-1 — neutral
+    "LPS_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC[C@@H](N)C(=O)O",
+    "LPS_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](N)C(=O)O",
+    # LPG sn-1 — neutral
+    "LPG_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC[C@@H](O)CO",
+    "LPG_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](O)CO",
 }
 
 # ============================================================================
