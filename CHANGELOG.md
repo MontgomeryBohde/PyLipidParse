@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-04-09
+## [1.0.0] - 2026-04-09
 
 ### Added
 - `LipidConverter` class with `to_mol`, `to_smiles`, `to_inchi`, `to_inchikey`, `to_mol_file`, `to_sdf` methods

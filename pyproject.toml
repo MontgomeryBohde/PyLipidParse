@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pylipidparse"
-version = "0.1.0"
+version = "1.0.0"
 description = "Convert lipid shorthand notation to SMILES, InChI, InChIKey, and RDKit molecules"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.8"
 keywords = ["lipidomics", "cheminformatics", "rdkit", "smiles", "lipid", "lipidmaps"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
