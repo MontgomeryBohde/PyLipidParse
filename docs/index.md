@@ -28,7 +28,7 @@ conv.to_mol("Cer 18:1;O2/16:0")
 
 ## Quick links
 
-- [Installation](installation.md) -- pip, conda, or from source
+- [Installation](installation.md) -- pip or from source
 - [Usage guide](usage.md) -- examples and workflows
 - [Supported lipid classes](supported_classes.md) -- full list with examples
 - [API Reference](api_reference.md) -- detailed method documentation

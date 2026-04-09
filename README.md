@@ -41,7 +41,7 @@ conv.to_sdf(["PC 16:0/18:1(9Z)", "PE 18:0/20:4(5Z,8Z,11Z,14Z)"], path="output.sd
 
 ## Installation
 
-### pip (Python 3.10+)
+### pip
 
 ```bash
 pip install pylipidparse
@@ -53,12 +53,6 @@ pip install pylipidparse
 uv add pylipidparse
 ```
 
-### conda (all Python 3.8+ versions, recommended for older RDKit)
-
-```bash
-conda install -c conda-forge pylipidparse
-```
-
 ### From source
 
 ```bash
@@ -66,9 +60,6 @@ git clone https://github.com/MontgomeryBohde/PyLipidParse.git
 cd PyLipidParse
 pip install -e ".[dev]"
 ```
-
-> **RDKit note:** For Python 3.8/3.9, pip wheels for RDKit may not be available.
-> Use conda: `conda install -c conda-forge rdkit pygoslin`
 
 ## Quick start
 
