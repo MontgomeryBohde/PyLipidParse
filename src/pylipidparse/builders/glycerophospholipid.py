@@ -58,9 +58,11 @@ class GlycerophospholipidBuilder(AbstractLipidBuilder):
 
         subs = {}
         if sn1_present:
-            subs["sn1"] = _build_chain_fragment(sn1_fa, "sn1")
+            # sn-1 scaffold pattern: {sn1}O — chain LEFT of O, methyl-first ends C(=O)O ✓
+            subs["sn1"] = _build_chain_fragment(sn1_fa, "sn1", c1_first=False)
         if sn2_present:
-            subs["sn2"] = _build_chain_fragment(sn2_fa, "sn2")
+            # sn-2 scaffold pattern: O{sn2} — chain RIGHT of O, needs C1-first ✓
+            subs["sn2"] = _build_chain_fragment(sn2_fa, "sn2", c1_first=True)
 
         smiles = scaffold.format(**subs)
         mol = self._mol_from_smiles(smiles)

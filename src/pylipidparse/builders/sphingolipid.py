@@ -71,21 +71,28 @@ def _build_sphingoid_base_smiles(n_carbon: int, n_oh: int, n_db: int) -> str:
     """
     if n_oh == 3:
         # Phytosphingosine: C3-OH, C4-OH, no canonical double bond
+        # Natural configuration: (2S,3S,4R) — PubChem CID 122121
         # Structure (methyl-first): Cn...C5-C4(OH)-C3(OH)-C2(N)-C1(OH/head)
         tail_n = n_carbon - 4
         tail = "C" * tail_n
-        return f"{tail}[C@@H](O)[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
+        return f"{tail}[C@H](O)[C@@H](O)[C@H]({{N_ACYL}}){{C1_HEAD}}"
 
     elif n_oh == 2:
         # Standard d-type sphingosine or dihydrosphingosine
         if n_db == 0:
             # Dihydrosphingosine: no double bond
+            # Natural configuration: (2S,3R).
+            # In methyl-first SMILES both C3 and C2 are [C@@H] to give (2S,3R).
+            # Verified against PubChem ceramide (CID 5283564) pattern.
             # Cn...C4-C3(OH)-C2(N)-C1(OH/head)
             tail_n = n_carbon - 3
             tail = "C" * tail_n
-            return f"{tail}[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
+            return f"{tail}[C@@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
         else:
             # Sphingosine: 4E double bond (standard biological default)
+            # Natural configuration: (2S,3R).
+            # In methyl-first SMILES both C3 and C2 are [C@@H] to give (2S,3R).
+            # Verified: gives YDNKGFDKKRUKPY-TURZORIXSA-N for Cer d18:1/16:0.
             # Cn...C6-C5=C4-C3(OH)-C2(N)-C1(OH/head)   [4E = trans = /C=C/]
             tail_n = n_carbon - 5
             if tail_n < 0:
@@ -93,7 +100,7 @@ def _build_sphingoid_base_smiles(n_carbon: int, n_oh: int, n_db: int) -> str:
                     f"Sphingoid base too short ({n_carbon}C) for d-type with double bond."
                 )
             tail = "C" * tail_n
-            return f"{tail}/C=C/[C@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
+            return f"{tail}/C=C/[C@@H](O)[C@@H]({{N_ACYL}}){{C1_HEAD}}"
 
     elif n_oh == 1:
         # m-type: C1-OH only

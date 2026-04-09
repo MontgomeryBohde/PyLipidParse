@@ -42,8 +42,16 @@ def _get_bond_type(fa) -> str:
     return _BT_ESTER
 
 
-def _build_chain_fragment(fa, position_label: str = "") -> str:
-    """Build the chain SMILES fragment for one FA chain."""
+def _build_chain_fragment(fa, position_label: str = "", c1_first: bool = False) -> str:
+    """Build the chain SMILES fragment for one FA chain.
+
+    Parameters
+    ----------
+    c1_first : bool
+        If True, assemble in C1-first (carboxyl-first) order. Required for
+        sn-2 and sn-3 positions where the scaffold has ``O{sn}`` so that
+        the ester linkage reads ``O-C(=O)-chain`` rather than ``O-chain-C(=O)``.
+    """
     bond_type = _get_bond_type(fa)
     num_carbon = int(fa.num_carbon)
     num_db = _extract_db_count(fa)
@@ -57,13 +65,14 @@ def _build_chain_fragment(fa, position_label: str = "") -> str:
         )
 
     if bond_type == _BT_PLASMENYL:
+        # Plasmalogen vinyl-ether: fragment starts with /C=C\ regardless of direction
         return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=True)
     elif bond_type in (_BT_PLASMANYL,):
-        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=False)
+        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=False, c1_first=c1_first)
     elif bond_type == _BT_NO_FA:
         return ""
     else:  # ESTER or LCB
-        return build_acyl_chain(num_carbon, db_positions, mods, terminus="ester")
+        return build_acyl_chain(num_carbon, db_positions, mods, terminus="ester", c1_first=c1_first)
 
 
 class GlycerolipidBuilder(AbstractLipidBuilder):
@@ -93,11 +102,14 @@ class GlycerolipidBuilder(AbstractLipidBuilder):
 
         subs = {}
         if sn1_present:
-            subs["sn1"] = _build_chain_fragment(sn1_fa, "sn1")
+            # sn-1 scaffold pattern: {sn1}O — chain is LEFT of O, methyl-first ends C(=O)O ✓
+            subs["sn1"] = _build_chain_fragment(sn1_fa, "sn1", c1_first=False)
         if sn2_present:
-            subs["sn2"] = _build_chain_fragment(sn2_fa, "sn2")
+            # sn-2 scaffold pattern: O{sn2} — chain is RIGHT of O, needs C1-first so C(=O) leads ✓
+            subs["sn2"] = _build_chain_fragment(sn2_fa, "sn2", c1_first=True)
         if sn3_present:
-            subs["sn3"] = _build_chain_fragment(sn3_fa, "sn3")
+            # sn-3 scaffold pattern: O{sn3} — same as sn-2, needs C1-first ✓
+            subs["sn3"] = _build_chain_fragment(sn3_fa, "sn3", c1_first=True)
 
         smiles = scaffold.format(**subs)
         mol = self._mol_from_smiles(smiles)

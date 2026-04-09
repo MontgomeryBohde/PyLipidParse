@@ -28,15 +28,17 @@ from pylipidparse.exceptions import (
 from pylipidparse.utils.chain import build_acyl_chain
 
 # Cholesterol SMILES — C27H46O (PubChem CID 5997, 3β-hydroxy-Δ5-cholestene)
-# Verified: 27 carbons, 4-ring steroid backbone, Δ5 double bond, 3β-OH
+# SMILES taken directly from PubChem CID 5997 canonical isomeric SMILES.
+# 4-ring ABCD steroid backbone: A(6)-B(6)-C(6)-D(5), Δ5 double bond, 3β-OH.
 _CHOLESTEROL_SMILES = (
-    "CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@H]3CCC4=C[C@@H](O)CC[C@]4(C)[C@@H]3CC[C@@]12C"
+    "C[C@H](CCCC(C)C)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)O)C)C"
 )
 
-# Cholesterol ester: 3β-OH replaced with OC(=O)[acyl_tail]
-# {acyl} is C2..Cn of the fatty acid (methyl-first, without the C1 carbonyl)
+# Cholesterol ester scaffold: 3β-OH replaced with OC(=O){acyl}.
+# {acyl} is C2..Cn of the fatty acid (methyl-first, without the C1 carbonyl).
+# Ring system is identical to _CHOLESTEROL_SMILES (PubChem CID 5997).
 _CE_SCAFFOLD = (
-    "CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@H]3CCC4=C[C@@H](OC(=O){acyl})CC[C@]4(C)[C@@H]3CC[C@@]12C"
+    "C[C@H](CCCC(C)C)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)OC(=O){acyl})C)C"
 )
 
 # Headgroup strings that map to free cholesterol
@@ -135,14 +137,16 @@ class SterolBuilder(AbstractLipidBuilder):
                 f"Acyl chain has {num_db} double bond(s) but no positional info."
             )
 
-        # acyl_fragment: methyl-first, ends with C(=O)  e.g. "CCCCC...CC(=O)"
-        acyl_fragment = build_acyl_chain(num_carbon, db_positions, mods, terminus="ester")
+        # Build in C1-first order so the chain reads C2→Cn (left to right after the
+        # scaffold's OC(=O)).  Methyl-first order would reverse the directional bonds
+        # for unsaturated chains, placing the double bond at the wrong Δ position.
+        acyl_c1 = build_acyl_chain(num_carbon, db_positions, mods, terminus="ester", c1_first=True)
 
-        # CE scaffold has OC(=O){acyl} where {acyl} = C2..Cn (without C1's C(=O))
-        if acyl_fragment.endswith("C(=O)"):
-            acyl_tail = acyl_fragment[:-5]  # C2..Cn
+        # CE scaffold has OC(=O){acyl} where {acyl} = C2..Cn (strip the leading C(=O))
+        if acyl_c1.startswith("C(=O)"):
+            acyl_tail = acyl_c1[5:]  # C2..Cn
         else:
-            acyl_tail = acyl_fragment
+            acyl_tail = acyl_c1
 
         smiles = _CE_SCAFFOLD.format(acyl=acyl_tail)
         return self._mol_from_smiles_sanitized(smiles)

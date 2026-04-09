@@ -26,12 +26,17 @@ def build_acyl_chain(
     double_bond_positions: Optional[Dict[int, str]] = None,
     modifications: Optional[Dict[int, str]] = None,
     terminus: str = "ester",
+    c1_first: bool = False,
 ) -> str:
-    """Build an acyl (or alkyl) chain SMILES fragment in methyl-first format.
+    """Build an acyl (or alkyl) chain SMILES fragment.
 
-    The chain runs from C_n (methyl end) to C_1 (attachment end).
+    By default the chain runs from C_n (methyl end) to C_1 (attachment end)
+    — **methyl-first** order. Set ``c1_first=True`` to reverse the direction so
+    the chain runs from C_1 to C_n — needed when the scaffold places the ester
+    oxygen *before* the chain placeholder, e.g. ``O{sn2}``.
+
     The SMILES fragment does NOT include the ester/ether oxygen — that is
-    provided by the scaffold. The fragment ends at the attachment carbon C_1.
+    provided by the scaffold.
 
     Parameters
     ----------
@@ -51,11 +56,15 @@ def build_acyl_chain(
         - ``'alkyl'``:      C1 is ``C``       — for ether linkage (no carbonyl)
         - ``'aldehyde'``:   C1 is ``C=O``     — fatty aldehyde
         - ``'amide'``:      C1 is ``C(=O)``   — for N-acyl bond (same as ester)
+    c1_first : bool
+        If True, assemble in C1→Cn order (carboxyl-first) instead of the
+        default Cn→C1 (methyl-first). Directional stereo bonds ``/`` and ``\\``
+        are automatically flipped so the Z/E geometry is preserved.
 
     Returns
     -------
     str
-        SMILES fragment in methyl-first format.
+        SMILES fragment in the requested direction.
 
     Examples
     --------
@@ -167,16 +176,36 @@ def build_acyl_chain(
                 bond_tokens[pos - 1] = after_dir
 
     # ------------------------------------------------------------------ #
-    # Assemble SMILES in methyl-first order: C_n, bond[n-1], ..., C_1    #
+    # Assemble SMILES                                                     #
     # ------------------------------------------------------------------ #
-    parts = []
-    for i in range(num_carbon, 0, -1):
-        parts.append(atom_tokens[i])
-        if i > 1:
-            # Bond between C_{i-1} and C_i (appears in methyl-first between C_i and C_{i-1})
-            parts.append(bond_tokens.get(i - 1, ""))
+    def _flip(bond: str) -> str:
+        """Flip a directional bond token for reversed traversal."""
+        if bond == "/":
+            return "\\"
+        if bond == "\\":
+            return "/"
+        return bond
 
-    return "".join(parts)
+    if c1_first:
+        # Assemble C1 → Cn (carboxyl-first order).
+        # Traversal direction is reversed, so directional bonds are flipped.
+        parts = []
+        for i in range(1, num_carbon + 1):
+            parts.append(atom_tokens[i])
+            if i < num_carbon:
+                # Bond between C_i and C_{i+1} in C1-first traversal.
+                # bond_tokens[i] was computed for methyl-first, so flip its direction.
+                parts.append(_flip(bond_tokens.get(i, "")))
+        return "".join(parts)
+    else:
+        # Default: methyl-first order: C_n, bond[n-1], ..., C_1
+        parts = []
+        for i in range(num_carbon, 0, -1):
+            parts.append(atom_tokens[i])
+            if i > 1:
+                # Bond between C_{i-1} and C_i (methyl-first direction)
+                parts.append(bond_tokens.get(i - 1, ""))
+        return "".join(parts)
 
 
 def build_alkyl_chain(
@@ -184,6 +213,7 @@ def build_alkyl_chain(
     double_bond_positions: Optional[Dict[int, str]] = None,
     modifications: Optional[Dict[int, str]] = None,
     plasmalogen: bool = False,
+    c1_first: bool = False,
 ) -> str:
     """Build an alkyl/alkenyl chain fragment for ether linkages.
 
@@ -246,6 +276,7 @@ def build_alkyl_chain(
             double_bond_positions,
             modifications,
             terminus="alkyl",
+            c1_first=c1_first,
         )
 
 

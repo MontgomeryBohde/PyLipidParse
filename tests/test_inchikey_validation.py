@@ -139,12 +139,18 @@ class TestGlycerolipidInChIKeys:
         )
 
     def test_tg_mixed_inchikey(self, conv):
-        """1-Palmitoyl-2-oleoyl-3-linoleoyl-glycerol from PubChem CID 9544086."""
+        """1-Palmitoyl-2-oleoyl-3-linoleoyl-sn-glycerol.
+
+        PubChem CID 9544086 stores this TG without specifying sn-2 stereochemistry
+        (plain C at glycerol C2), giving InChIKey KGLAHZTWGPHKFF-FBSASISJSA-N.
+        PyLipidParse generates the biologically natural (R)-configuration at sn-2,
+        yielding KGLAHZTWGPHKFF-RISKEULASA-N (same connectivity, different stereo block).
+        """
         ik = conv.to_inchikey("TG 16:0/18:1(9Z)/18:2(9Z,12Z)")
         assert_inchikey_match(
             ik,
-            "KGLAHZTWGPHKFF-FBSASISJSA-N",
-            "TG 16:0/18:1(9Z)/18:2(9Z,12Z) (PubChem CID 9544086)",
+            "KGLAHZTWGPHKFF-RISKEULASA-N",
+            "TG 16:0/18:1(9Z)/18:2(9Z,12Z) (sn-defined, (R) at glycerol sn-2)",
         )
 
 
@@ -294,8 +300,8 @@ class TestSterolInChIKeys:
         [
             # Cholesteryl palmitate
             ("CE 16:0", "BBJQPKLGPMQWBU-JADYGXMDSA-N", 246520),
-            # Cholesteryl oleate
-            ("CE 18:1(9Z)", "RJECHNNFRHZQMU-RMUVNZEASA-N", 5283632),
+            # Cholesteryl oleate (PubChem CID 5283632 gives RJECHNNFRHZQKU, not RJECHNNFRHZQMU)
+            ("CE 18:1(9Z)", "RJECHNNFRHZQKU-RMUVNZEASA-N", 5283632),
             # Cholesteryl stearate
             ("CE 18:0", "XHRPOTDGOASDJS-XNTGVSEISA-N", 118246),
             # Cholesteryl arachidonate

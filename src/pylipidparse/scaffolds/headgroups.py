@@ -54,11 +54,11 @@ GLYCEROLIPID_SCAFFOLDS: Dict[str, str] = {
     # DAG: sn-2 and sn-3 esterified, sn-1 = free OH
     "DAG_23": "OC[C@@H](O{sn2})CO{sn3}",
     # MAG: sn-1 only
-    "MAG_1": "{sn1}OCC(O)CO",
+    "MAG_1": "{sn1}OC[C@@H](O)CO",
     # MAG: sn-2 only
     "MAG_2": "OC[C@@H](O{sn2})CO",
     # MAG: sn-3 only
-    "MAG_3": "OCC(O)CO{sn3}",
+    "MAG_3": "OC[C@@H](O)CO{sn3}",
 }
 
 # ============================================================================
@@ -80,11 +80,13 @@ GLYCEROPHOSPHOLIPID_SCAFFOLDS: Dict[str, str] = {
     # PA: phosphatidic acid — neutral (diprotonated phosphate monoester)
     "PA": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)O",
     # PI: phosphatidylinositol — neutral
-    "PI": ("{sn1}OC[C@@H](O{sn2})COP(=O)(O)" "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"),
-    # PS: phosphatidylserine — neutral
-    "PS": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](N)C(=O)O",
+    # Inositol ring notation from PubChem CID 71296232; C4 has no stereo (plane of symmetry).
+    "PI": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC1[C@@H]([C@H](C([C@H]([C@H]1O)O)O)O)O",
+    # PS: phosphatidylserine — neutral (L-serine = S configuration)
+    "PS": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC[C@H](N)C(=O)O",
     # PG: phosphatidylglycerol — neutral
-    "PG": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](O)CO",
+    # PubChem CID 5283509 has no stereocenter at the headgroup glycerol.
+    "PG": "{sn1}OC[C@@H](O{sn2})COP(=O)(O)OCC(O)CO",
     # Lyso variants: one chain position = free OH
     # LPC sn-1 occupied, sn-2 = OH (zwitterionic)
     "LPC_SN1": "{sn1}OC[C@@H](O)COP(=O)([O-])OCC[N+](C)(C)C",
@@ -97,15 +99,15 @@ GLYCEROPHOSPHOLIPID_SCAFFOLDS: Dict[str, str] = {
     # LPA sn-1 — neutral
     "LPA_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)O",
     "LPA_SN2": "OC[C@@H](O{sn2})COP(=O)(O)O",
-    # LPI sn-1 — neutral
-    "LPI_SN1": ("{sn1}OC[C@@H](O)COP(=O)(O)" "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"),
-    "LPI_SN2": ("OC[C@@H](O{sn2})COP(=O)(O)" "O[C@@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"),
-    # LPS sn-1 — neutral
-    "LPS_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC[C@@H](N)C(=O)O",
-    "LPS_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](N)C(=O)O",
-    # LPG sn-1 — neutral
-    "LPG_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC[C@@H](O)CO",
-    "LPG_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC[C@@H](O)CO",
+    # LPI sn-1 — neutral (same inositol ring fix as PI)
+    "LPI_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC1[C@@H]([C@H](C([C@H]([C@H]1O)O)O)O)O",
+    "LPI_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC1[C@@H]([C@H](C([C@H]([C@H]1O)O)O)O)O",
+    # LPS sn-1 — neutral (same serine fix as PS: [C@H] not [C@@H])
+    "LPS_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OC[C@H](N)C(=O)O",
+    "LPS_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OC[C@H](N)C(=O)O",
+    # LPG sn-1 — neutral (same headgroup glycerol fix as PG: no stereo)
+    "LPG_SN1": "{sn1}OC[C@@H](O)COP(=O)(O)OCC(O)CO",
+    "LPG_SN2": "OC[C@@H](O{sn2})COP(=O)(O)OCC(O)CO",
 }
 
 # ============================================================================
@@ -119,10 +121,10 @@ SPHINGOLIPID_HEADGROUPS: Dict[str, str] = {
     "Cer": "O",  # C1-OH stays as OH
     # Sphingomyelin: phosphocholine on C1-OH
     "SM": "OP(=O)([O-])OCC[N+](C)(C)C",
-    # Hexosylceramide (generic hexose)
-    "HexCer": "O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]1O",
-    # Glucosylceramide (Glc = beta-D-glucose)
-    "GlcCer": "O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]1O",
+    # Hexosylceramide (generic hexose = beta-D-glucose, PubChem CID 14035030)
+    "HexCer": "O[C@H]1[C@@H]([C@H]([C@@H]([C@H](O1)CO)O)O)O",
+    # Glucosylceramide (Glc = beta-D-glucose, same stereo as HexCer)
+    "GlcCer": "O[C@H]1[C@@H]([C@H]([C@@H]([C@H](O1)CO)O)O)O",
     # Galactosylceramide (Gal = beta-D-galactose)
     "GalCer": "O[C@@H]1O[C@H](CO)[C@H](O)[C@@H](O)[C@@H]1O",
     # Lactosylceramide (Hex2Cer): Glc-Gal
