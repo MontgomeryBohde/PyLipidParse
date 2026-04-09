@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `lipid_to_mol_file`, `lipids_to_sdf`
 - `[mcp]` optional dependency: `pip install "pylipidparse[mcp]"` (requires Python 3.10+)
 - Claude Code plugin (`claude-code-plugin/`) for one-click MCP integration via `uvx`
-- Smithery registry config (`smithery.yaml`)
 - 28 new tests for the MCP server (319 total); MCP tests auto-skip on Python < 3.10
 
 ## [1.0.0] - 2026-04-09
