@@ -135,6 +135,8 @@ SPHINGOLIPID_HEADGROUPS: Dict[str, str] = {
     ),
     # Ceramide-1-phosphate
     "Cer1P": "OP(=O)([O-])[O-]",
+    # Free sphingoid base (SPB): C1-OH only (no N-acyl chain)
+    "SPB": "O",
 }
 
 

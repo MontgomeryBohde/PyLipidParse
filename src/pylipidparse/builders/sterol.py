@@ -47,25 +47,33 @@ _CHOLESTEROL_HG = frozenset({"FC", "CHOLESTEROL", "CHOL"})
 # Headgroup prefix patterns for sterols
 _ST_PREFIXES = frozenset({"ST", "CE", "CHE"})
 
-# Bile acid SMILES (verified against PubChem where noted)
+# Bile acid SMILES — taken from PubChem isomeric SMILES and verified by formula
 _BILE_ACIDS = {
-    # Cholic acid — PubChem CID 221493, C24H40O5
+    # Cholic acid — PubChem CID 221493, C24H40O5, 3α,7α,12α-trihydroxy-5β-cholanic acid
     "CA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)"
-        "CC[C@@H](O)CC)[C@@H](O)CC[C@@H]3O"
+        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1([C@H](C[C@H]3[C@H]2"
+        "[C@@H](C[C@H]4[C@@]3(CC[C@H](C4)O)C)O)O)C"
     ),
-    # Deoxycholic acid — PubChem CID 222528, C24H40O4
-    "DCA": ("OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CC[C@@H](O)CC)CCC3O"),
-    # Chenodeoxycholic acid — PubChem CID 10133, C24H40O4
+    # Deoxycholic acid — PubChem CID 222528, C24H40O4, 3α,12α-dihydroxy-5β-cholanic acid
+    "DCA": (
+        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1([C@H](C[C@H]3[C@H]2"
+        "CC[C@H]4[C@@]3(CC[C@H](C4)O)C)O)C"
+    ),
+    # Chenodeoxycholic acid — PubChem CID 10133, C24H40O4, 3α,7α-dihydroxy-5β-cholanic acid
     "CDCA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CCC(O)CC)[C@@H](O)CCC3"
+        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2"
+        "[C@@H](C[C@H]4[C@@]3(CC[C@H](C4)O)C)O)C"
     ),
-    # Ursodeoxycholic acid — PubChem CID 31401, C24H40O4
+    # Ursodeoxycholic acid — PubChem CID 31401, C24H40O4, 3α,7β-dihydroxy-5β-cholanic acid
     "UDCA": (
-        "OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CCC(O)CC)[C@H](O)CCC3"
+        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2"
+        "[C@H](C[C@H]4[C@@]3(CC[C@H](C4)O)C)O)C"
     ),
-    # Lithocholic acid — PubChem CID 9903, C24H40O3
-    "LCA": ("OC(=O)CC[C@H]1[C@@H]2CC[C@H]3[C@@H]([C@H]2CC[C@@H]1[C@@H](C)" "CCCC)CCC3O"),
+    # Lithocholic acid — PubChem CID 9903, C24H40O3, 3α-hydroxy-5β-cholanic acid
+    "LCA": (
+        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2"
+        "CC[C@H]4[C@@]3(CC[C@H](C4)O)C)C"
+    ),
 }
 
 _BILE_ACID_ALIASES = {

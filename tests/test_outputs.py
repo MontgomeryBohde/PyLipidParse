@@ -4,6 +4,7 @@ import pytest
 from rdkit import Chem
 
 from pylipidparse import LipidConverter
+from pylipidparse.exceptions import UnsupportedLipidClassError
 from tests.conftest import assert_valid_inchikey
 
 
@@ -157,3 +158,108 @@ class TestSDFFile:
         content = out.read_text()
         assert "InChIKey" in content
         assert "IPCSVZSSVZVIGE-UHFFFAOYSA-N" in content
+
+
+# ---------------------------------------------------------------------------
+# add_hydrogens=True paths
+# ---------------------------------------------------------------------------
+
+
+class TestAddHydrogens:
+    """Tests for the add_hydrogens parameter in to_mol_file() and to_sdf()."""
+
+    def test_mol_file_add_hydrogens(self, tmp_path, conv):
+        """to_mol_file with add_hydrogens=True should produce a larger file."""
+        out_no_h = tmp_path / "no_h.mol"
+        out_with_h = tmp_path / "with_h.mol"
+
+        conv.to_mol_file("FA 16:0", str(out_no_h))
+        conv.to_mol_file("FA 16:0", str(out_with_h), add_hydrogens=True)
+
+        # File with explicit H should be larger (more atoms in the MOL block)
+        assert out_with_h.stat().st_size > out_no_h.stat().st_size
+
+    def test_mol_file_add_hydrogens_content(self, tmp_path, conv):
+        """MOL file with add_hydrogens=True contains H atom entries."""
+        out = tmp_path / "h.mol"
+        conv.to_mol_file("FA 16:0", str(out), add_hydrogens=True)
+        content = out.read_text()
+        # MOL file should contain explicit H entries
+        assert " H " in content
+
+    def test_sdf_add_hydrogens(self, tmp_path, conv):
+        """to_sdf with add_hydrogens=True should produce a larger file."""
+        out_no_h = tmp_path / "no_h.sdf"
+        out_with_h = tmp_path / "with_h.sdf"
+
+        conv.to_sdf("FA 16:0", str(out_no_h))
+        conv.to_sdf("FA 16:0", str(out_with_h), add_hydrogens=True)
+
+        assert out_with_h.stat().st_size > out_no_h.stat().st_size
+
+    def test_sdf_add_hydrogens_multiple(self, tmp_path, conv):
+        """to_sdf with add_hydrogens=True works for multiple molecules."""
+        out = tmp_path / "multi_h.sdf"
+        conv.to_sdf(["FA 16:0", "FA 18:0"], str(out), add_hydrogens=True)
+        content = out.read_text()
+        assert content.count("$$$$") == 2
+
+
+# ---------------------------------------------------------------------------
+# Cache eviction
+# ---------------------------------------------------------------------------
+
+
+class TestCacheEviction:
+    """Tests for LRU cache eviction in LipidConverter."""
+
+    def test_cache_eviction_on_get_mol(self):
+        """With cache_size=1, converting a second molecule evicts the first."""
+        conv_small = LipidConverter(cache_size=1)
+        # First conversion — fills the cache
+        conv_small.to_smiles("FA 16:0")
+        assert "FA 16:0" in conv_small._cache
+
+        # Second conversion — should evict FA 16:0 and cache FA 18:0
+        conv_small.to_smiles("FA 18:0")
+        assert "FA 18:0" in conv_small._cache
+        assert "FA 16:0" not in conv_small._cache
+
+    def test_cache_eviction_cholesterol_synonym(self):
+        """Cholesterol synonyms also respect cache_size=1 eviction."""
+        conv_small = LipidConverter(cache_size=1)
+        # Fill the cache with a real lipid first
+        conv_small.to_smiles("FA 16:0")
+        assert "FA 16:0" in conv_small._cache
+
+        # Cholesterol synonym path also triggers eviction
+        conv_small.to_smiles("CHOL")
+        assert "CHOL" in conv_small._cache
+        assert "FA 16:0" not in conv_small._cache
+
+
+# ---------------------------------------------------------------------------
+# Unsupported lipid class dispatch
+# ---------------------------------------------------------------------------
+
+
+class TestUnsupportedDispatch:
+    """Tests for UnsupportedLipidClassError from _dispatch()."""
+
+    def test_unsupported_class_raises(self):
+        """A lipid class not in any known category raises UnsupportedLipidClassError."""
+        # We need to reach _dispatch with an unknown class.
+        # Create a minimal mock that bypasses pygoslin parsing.
+        from pylipidparse.exceptions import UnsupportedLipidClassError as Err
+
+        conv_test = LipidConverter()
+
+        class _MockHG:
+            headgroup = "UNKNOWN_CLASS_XYZ"
+
+        class _MockLipid:
+            headgroup = _MockHG()
+            fa = {}
+
+        with pytest.raises(Err, match="UNKNOWN_CLASS_XYZ"):
+            conv_test._dispatch(_MockLipid(), "UNKNOWN_CLASS_XYZ")

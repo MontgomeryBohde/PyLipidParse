@@ -103,8 +103,7 @@ class FattyAcidBuilder(AbstractLipidBuilder):
         if headgroup in ("FAL",):
             terminus = "aldehyde"
         elif headgroup in ("FOH",):
-            terminus = "alkyl"
-            modifications[1] = "OH"
+            terminus = "alcohol"
         else:
             terminus = "free_acid"
 

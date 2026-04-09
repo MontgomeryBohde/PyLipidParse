@@ -3,11 +3,16 @@
 import warnings
 
 import pytest
+from rdkit import Chem
 
 from pylipidparse import LipidConverter
+from pylipidparse.builders.base import AbstractLipidBuilder
+from pylipidparse.builders.glycerophospholipid import GlycerophospholipidBuilder
 from pylipidparse.exceptions import (
     InsufficientStructuralDetailError,
     LipidParseError,
+    StructureGenerationError,
+    UnsupportedLipidClassError,
 )
 
 
@@ -138,3 +143,88 @@ class TestCaching:
         assert "FA 20:0" in conv._cache
         assert "FA 18:0" in conv._cache
         assert "FA 16:0" not in conv._cache
+
+
+# ---------------------------------------------------------------------------
+# AbstractLipidBuilder error paths
+# ---------------------------------------------------------------------------
+
+
+class _ConcreteBuilder(AbstractLipidBuilder):
+    """Minimal concrete subclass to test AbstractLipidBuilder static methods."""
+
+    def build(self, lipid):
+        raise NotImplementedError
+
+
+class TestBuilderBase:
+    """Tests for error paths in AbstractLipidBuilder."""
+
+    def test_invalid_smiles_raises_structure_error(self):
+        """_mol_from_smiles with invalid SMILES raises StructureGenerationError."""
+        builder = _ConcreteBuilder()
+        with pytest.raises(StructureGenerationError, match="RDKit could not parse"):
+            builder._mol_from_smiles("C(C)(C)(C)(C)(C)")  # pentavalent carbon — invalid
+
+    def test_sanitize_failure_raises_structure_error(self):
+        """_sanitize with a molecule that fails sanitization raises StructureGenerationError."""
+        from rdkit.Chem import RWMol
+
+        # Use MolFromSmiles with sanitize=False to get an unsanitized bad molecule
+        bad_smiles = "c1ccccc1"  # benzene — but we'll manually break it
+        # Create a molecule that passes MolFromSmiles but fails SanitizeMol
+        # by setting an atom to have incorrect valence via direct manipulation
+        mol = Chem.MolFromSmiles("CC", sanitize=False)
+        rwmol = RWMol(mol)
+        # Set atom 0 to have valence 8 (impossible for carbon) — triggers sanitization failure
+        rwmol.GetAtomWithIdx(0).SetNumExplicitHs(10)
+        rwmol.GetAtomWithIdx(0).SetNoImplicit(True)
+
+        builder = _ConcreteBuilder()
+        with pytest.raises(StructureGenerationError, match="sanitization failed"):
+            builder._sanitize(rwmol)
+
+
+# ---------------------------------------------------------------------------
+# GlycerophospholipidBuilder error paths
+# ---------------------------------------------------------------------------
+
+
+class _MockHG:
+    def __init__(self, hg: str):
+        self.headgroup = hg
+
+
+class _MockFA:
+    def __init__(self, num_carbon=16, double_bonds=0, functional_groups=None):
+        self.num_carbon = num_carbon
+        self.double_bonds = double_bonds
+        self.functional_groups = functional_groups or {}
+        self.lipid_FA_bond_type = None
+
+    def db_num(self):
+        return self.double_bonds
+
+
+class _MockLipid:
+    def __init__(self, hg: str, fa: dict = None):
+        self.headgroup = _MockHG(hg)
+        self.fa = fa or {}
+
+
+class TestGPBuilderErrors:
+    """Error paths in GlycerophospholipidBuilder."""
+
+    def test_unsupported_gp_class_raises(self):
+        """Unknown GP class raises UnsupportedLipidClassError."""
+        # CL (cardiolipin) is not in _FULL_GP_CLASSES
+        lipid = _MockLipid("CL", fa={"FA1": _MockFA(), "FA2": _MockFA()})
+        with pytest.raises(UnsupportedLipidClassError):
+            GlycerophospholipidBuilder().build(lipid)
+
+    def test_gp_no_chains_raises(self):
+        """GP lipid with no sn1/sn2 raises InsufficientStructuralDetailError."""
+        # PC with FA chains that have 0 carbons — triggers the no-chain error
+        lipid = _MockLipid("PC", fa={"FA1": _MockFA(num_carbon=0), "FA2": _MockFA(num_carbon=0)})
+        with pytest.raises(InsufficientStructuralDetailError):
+            GlycerophospholipidBuilder().build(lipid)

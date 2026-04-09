@@ -127,6 +127,8 @@ def build_acyl_chain(
         atom_tokens[1] = "C"
     elif terminus == "aldehyde":
         atom_tokens[1] = "C=O"
+    elif terminus == "alcohol":
+        atom_tokens[1] = "C(O)"
     else:
         raise ValueError(f"Unknown terminus type: {terminus!r}")
 
