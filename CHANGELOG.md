@@ -7,17 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2024-01-01
+## [0.1.0] - 2026-04-09
 
 ### Added
-- Initial release
 - `LipidConverter` class with `to_mol`, `to_smiles`, `to_inchi`, `to_inchikey`, `to_mol_file`, `to_sdf` methods
-- Support for Fatty Acids (FA)
-- Support for Glycerolipids (MG, DG, TG)
-- Support for Glycerophospholipids (PC, PE, PA, PI, PS, PG and lyso variants)
-- Support for Sphingolipids (Cer, SM, HexCer, Hex2Cer)
-- Support for Sterols (cholesterol, cholesterol esters)
-- Ether and plasmalogen linkage support
-- LRU caching for fast repeated conversions
-- Python 3.8+ compatibility
-- RDKit 2021.03+ compatibility
+- Fatty acid (FA) support: saturated, mono/polyunsaturated with positional double bonds
+- Glycerolipid (GL) support: MG, DG, TG with sn-position assignment
+- Glycerophospholipid (GP) support: PC, PE, PA, PI, PS, PG and all lyso variants
+- Sphingolipid (SP) support: Cer, SM, HexCer, GlcCer, GalCer, Hex2Cer, Cer1P
+- Sterol (ST) support: cholesterol, cholesterol esters (CE), bile acids (CA, DCA, CDCA, UDCA, LCA)
+- Ether (O-) and plasmalogen (P-) linkage support
+- LRU caching for fast repeated conversions (configurable size, default 512)
+- 49 InChIKey validation tests verified against PubChem CIDs
+- mkdocs-material documentation site with GitHub Pages deployment
+- CI: lint/type-check + test matrix across Python 3.8-3.12 (pip and conda)
+- PyPI publish workflow via trusted publishing (OIDC)
+- Python 3.8+ and RDKit 2021.03+ compatibility
