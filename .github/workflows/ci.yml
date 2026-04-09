@@ -72,10 +72,13 @@ jobs:
         include:
           - python-version: "3.8"
             rdkit-version: "2021.09"
+            install-mcp: false
           - python-version: "3.9"
             rdkit-version: "2022.09"
+            install-mcp: false
           - python-version: "3.10"
             rdkit-version: "2023.03"
+            install-mcp: true
 
     steps:
       - uses: actions/checkout@v4
@@ -96,7 +99,7 @@ jobs:
           pip install -e . --no-deps
 
       - name: Install MCP extras (Python 3.10+ only)
-        if: matrix.python-version >= '3.10'
+        if: matrix.install-mcp
         shell: bash -l {0}
         run: pip install mcp pytest-asyncio
 
