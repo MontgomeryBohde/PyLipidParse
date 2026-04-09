@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pylipidparse": {
+      "command": "uvx",
+      "args": ["--from", "pylipidparse[mcp]", "pylipidparse-mcp"],
+      "description": "PyLipidParse MCP server: converts lipid shorthand notation to molecular structures"
+    }
+  }
+}

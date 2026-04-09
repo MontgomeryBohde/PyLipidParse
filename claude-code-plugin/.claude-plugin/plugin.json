@@ -1,0 +1,12 @@
+{
+  "name": "pylipidparse",
+  "description": "Convert lipid shorthand notation (LIPID MAPS, SwissLipids, HMDB, Goslin) to canonical SMILES, InChI, InChIKey, MOL files, and SDF files using PyLipidParse.",
+  "version": "1.1.0",
+  "author": {
+    "name": "Montgomery Bohde"
+  },
+  "homepage": "https://github.com/MontgomeryBohde/PyLipidParse",
+  "repository": "https://github.com/MontgomeryBohde/PyLipidParse",
+  "license": "MIT",
+  "keywords": ["chemistry", "lipidomics", "smiles", "cheminformatics", "lipid", "rdkit", "inchi"]
+}
