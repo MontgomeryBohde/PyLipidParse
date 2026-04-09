@@ -68,7 +68,9 @@ def _build_chain_fragment(fa, position_label: str = "", c1_first: bool = False) 
         # Plasmalogen vinyl-ether: fragment starts with /C=C\ regardless of direction
         return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=True)
     elif bond_type in (_BT_PLASMANYL,):
-        return build_alkyl_chain(num_carbon, db_positions, mods, plasmalogen=False, c1_first=c1_first)
+        return build_alkyl_chain(
+            num_carbon, db_positions, mods, plasmalogen=False, c1_first=c1_first
+        )
     elif bond_type == _BT_NO_FA:
         return ""
     else:  # ESTER or LCB
