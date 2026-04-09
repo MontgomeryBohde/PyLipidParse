@@ -4,7 +4,6 @@ import pytest
 from rdkit import Chem
 
 from pylipidparse import LipidConverter
-from pylipidparse.exceptions import UnsupportedLipidClassError
 from tests.conftest import assert_valid_inchikey
 
 

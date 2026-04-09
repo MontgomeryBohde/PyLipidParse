@@ -100,9 +100,9 @@ class TestBuildAcylChainEdgeCases:
         assert Chem.MolFromSmiles(smiles) is not None
         # At least one warning should have been issued about conflicting bonds
         warn_msgs = [str(w.message) for w in caught]
-        assert any("conflict" in m.lower() or "directional" in m.lower() for m in warn_msgs), (
-            f"Expected a stereo conflict warning, got: {warn_msgs}"
-        )
+        assert any(
+            "conflict" in m.lower() or "directional" in m.lower() for m in warn_msgs
+        ), f"Expected a stereo conflict warning, got: {warn_msgs}"
 
 
 class TestBuildAlkylChainPlasmalogen:

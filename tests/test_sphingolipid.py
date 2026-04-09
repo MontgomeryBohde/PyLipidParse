@@ -167,6 +167,7 @@ class TestPhytosphingolipids:
         assert mol is not None
         # Phytosphingosine C18 base: C18H39NO3
         from rdkit.Chem import rdMolDescriptors
+
         f = rdMolDescriptors.CalcMolFormula(mol)
         assert f == "C18H39NO3", f"Expected C18H39NO3, got {f}"
 
@@ -221,6 +222,7 @@ class TestSphingoidBaseSmiles:
         assert mol is not None
         # m-type 18C base: no extra OHs beyond C1 → C18H39NO
         from rdkit.Chem import rdMolDescriptors
+
         f = rdMolDescriptors.CalcMolFormula(mol)
         assert f == "C18H39NO", f"Expected C18H39NO, got {f}"
 

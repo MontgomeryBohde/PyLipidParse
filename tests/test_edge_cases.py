@@ -170,8 +170,6 @@ class TestBuilderBase:
         """_sanitize with a molecule that fails sanitization raises StructureGenerationError."""
         from rdkit.Chem import RWMol
 
-        # Use MolFromSmiles with sanitize=False to get an unsanitized bad molecule
-        bad_smiles = "c1ccccc1"  # benzene — but we'll manually break it
         # Create a molecule that passes MolFromSmiles but fails SanitizeMol
         # by setting an atom to have incorrect valence via direct manipulation
         mol = Chem.MolFromSmiles("CC", sanitize=False)

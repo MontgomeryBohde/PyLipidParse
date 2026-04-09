@@ -5,7 +5,7 @@ to simulate older RDKit installations.
 """
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from rdkit import Chem
@@ -30,8 +30,6 @@ class TestMolToInchi:
 
     def test_first_import_fails_uses_second(self):
         """When rdkit.Chem.inchi.MolToInchi import fails, falls back to rdkit.Chem."""
-        from rdkit.Chem import MolToInchi as real_func
-
         # Simulate rdkit.Chem.inchi not being importable
         with patch.dict(sys.modules, {"rdkit.Chem.inchi": None}):
             # Re-import to force fresh import resolution
@@ -51,8 +49,6 @@ class TestMolToInchi:
 
     def test_all_imports_fail_raises(self):
         """When all MolToInchi import paths fail, ImportError is raised."""
-        import importlib
-
         import pylipidparse._compat as compat_mod
 
         # Mock a version where the first import works but returns a broken function

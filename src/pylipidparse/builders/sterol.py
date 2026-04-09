@@ -71,8 +71,7 @@ _BILE_ACIDS = {
     ),
     # Lithocholic acid — PubChem CID 9903, C24H40O3, 3α-hydroxy-5β-cholanic acid
     "LCA": (
-        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2"
-        "CC[C@H]4[C@@]3(CC[C@H](C4)O)C)C"
+        "C[C@H](CCC(=O)O)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2" "CC[C@H]4[C@@]3(CC[C@H](C4)O)C)C"
     ),
 }
 
