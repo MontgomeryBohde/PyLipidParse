@@ -69,3 +69,38 @@ class TestGlycosphingolipids:
         # HexCer d18:1/16:0: Cer(C34H67NO3) + hexose(C6H12O6) - H2O = C40H77NO8
         smiles = conv.to_smiles("HexCer 18:1;O2/16:0")
         assert_formula(smiles, "C40H77NO8", "HexCer d18:1/16:0")
+
+    def test_glccer_parseable(self, conv):
+        """GlcCer d18:1/16:0 — explicit glucosylceramide."""
+        smiles = conv.to_smiles("GlcCer 18:1;O2/16:0")
+        mol = Chem.MolFromSmiles(smiles)
+        assert mol is not None
+
+    def test_glccer_formula(self, conv):
+        """GlcCer d18:1/16:0 should have the same formula as HexCer."""
+        smiles = conv.to_smiles("GlcCer 18:1;O2/16:0")
+        assert_formula(smiles, "C40H77NO8", "GlcCer d18:1/16:0")
+
+    def test_galcer_parseable(self, conv):
+        """GalCer d18:1/16:0 — galactosylceramide."""
+        smiles = conv.to_smiles("GalCer 18:1;O2/16:0")
+        mol = Chem.MolFromSmiles(smiles)
+        assert mol is not None
+
+    def test_galcer_formula(self, conv):
+        """GalCer d18:1/16:0 — same formula as GlcCer (isomer)."""
+        smiles = conv.to_smiles("GalCer 18:1;O2/16:0")
+        assert_formula(smiles, "C40H77NO8", "GalCer d18:1/16:0")
+
+    @pytest.mark.xfail(
+        reason="Hex2Cer builder does not yet attach second hexose — produces HexCer structure",
+        strict=False,
+    )
+    def test_hex2cer_formula(self, conv):
+        """Hex2Cer d18:1/16:0 (lactosylceramide) should have C46H87NO13.
+
+        Expected: Cer(C34H67NO3) + 2 hexoses(2 * C6H12O6) - 2 H2O = C46H87NO13.
+        Currently produces C40H77NO8 (same as HexCer — only one hexose attached).
+        """
+        smiles = conv.to_smiles("Hex2Cer 18:1;O2/16:0")
+        assert_formula(smiles, "C46H87NO13", "Hex2Cer d18:1/16:0")

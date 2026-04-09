@@ -225,6 +225,49 @@ class TestGlycerophospholipidInChIKeys:
 
 
 # ---------------------------------------------------------------------------
+# Ether / Plasmalogen Glycerophospholipids
+# ---------------------------------------------------------------------------
+
+
+class TestEtherGPInChIKeys:
+    """InChIKey validation for ether and plasmalogen glycerophospholipids.
+
+    All references from PubChem. Ether lipids have an alkyl (O-) or
+    vinyl ether (P-) linkage at sn-1 instead of an ester bond.
+    """
+
+    @pytest.mark.parametrize(
+        "lipid_name,expected_inchikey,pubchem_cid",
+        [
+            # Plasmanyl PE: 1-O-hexadecyl-2-oleoyl-sn-glycero-3-PE
+            ("PE O-16:0/18:1(9Z)", "JJGMGPGKWYLISM-NPBIGWJUSA-N", 42607455),
+            # Plasmanyl PC: 1-O-hexadecyl-2-oleoyl-sn-glycero-3-PC
+            ("PC O-16:0/18:1(9Z)", "SIEDNCDNGMIKST-IYEJTHTFSA-N", 24779266),
+            # Plasmenyl PE: 1-(1Z-octadecenyl)-2-arachidonoyl-sn-glycero-3-PE
+            (
+                "PE P-18:0/20:4(5Z,8Z,11Z,14Z)",
+                "URPXXNCTXCOATD-FXMFQVEGSA-N",
+                9547058,
+            ),
+        ],
+    )
+    def test_ether_gp_inchikeys(self, conv, lipid_name, expected_inchikey, pubchem_cid):
+        """Ether/plasmalogen GP InChIKeys from PubChem."""
+        ik = conv.to_inchikey(lipid_name)
+        assert_inchikey_match(ik, expected_inchikey, f"{lipid_name} (PubChem CID {pubchem_cid})")
+
+    def test_lyso_alkyl_pc_inchikey(self, conv):
+        """LPC O-18:1(9Z) — 1-O-(9Z-octadecenyl)-sn-glycero-3-PC.
+
+        PubChem CID 24779510.
+        """
+        ik = conv.to_inchikey("LPC O-18:1(9Z)")
+        assert_inchikey_match(
+            ik, "XWYSLMAMRKYUFH-HTOVTZSWSA-N", "LPC O-18:1(9Z) (PubChem CID 24779510)"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Sphingolipids
 # ---------------------------------------------------------------------------
 
@@ -260,6 +303,48 @@ class TestSphingolipidInChIKeys:
         ik = conv.to_inchikey("HexCer 18:1;O2/16:0")
         assert_inchikey_match(
             ik, "VJLLLMIZEJJZTE-NNTBDIJYSA-N", "HexCer 18:1;O2/16:0 (PubChem CID 14035030)"
+        )
+
+    def test_glccer_inchikey(self, conv):
+        """GlcCer d18:1/16:0 — explicit glucosylceramide notation.
+
+        Should produce the same InChIKey as HexCer 18:1;O2/16:0 since GlcCer
+        is a specific HexCer.
+        """
+        ik = conv.to_inchikey("GlcCer 18:1;O2/16:0")
+        assert_inchikey_match(
+            ik, "VJLLLMIZEJJZTE-NNTBDIJYSA-N", "GlcCer 18:1;O2/16:0 (PubChem CID 14035030)"
+        )
+
+    @pytest.mark.xfail(
+        reason="GalCer uses same sugar template as GlcCer — galactose ring stereo not yet distinct",
+        strict=False,
+    )
+    def test_galcer_inchikey(self, conv):
+        """GalCer d18:1/16:0 from PubChem CID 44260148 (LIPID MAPS LMSP0501AC01).
+
+        GalCer should differ from GlcCer in the sugar ring stereochemistry
+        (galactose vs glucose at C-4 of the hexose). Currently the builder
+        uses the same glucose template for both.
+        """
+        ik = conv.to_inchikey("GalCer 18:1;O2/16:0")
+        assert_inchikey_match(
+            ik, "VJLLLMIZEJJZTE-DKZZKAIRSA-N", "GalCer 18:1;O2/16:0 (PubChem CID 44260148)"
+        )
+
+    @pytest.mark.xfail(
+        reason="Hex2Cer builder does not yet attach second hexose — produces HexCer structure",
+        strict=False,
+    )
+    def test_laccer_inchikey(self, conv):
+        """LacCer d18:1/16:0 (Hex2Cer) from PubChem CID 53477895 (LIPID MAPS LMSP0501AB03).
+
+        Lactosylceramide has two hexose sugars (Gal-Glc-Cer). The expected
+        formula is C46H87NO13, not C40H77NO8.
+        """
+        ik = conv.to_inchikey("Hex2Cer 18:1;O2/16:0")
+        assert_inchikey_match(
+            ik, "HLIJNIKSBCIDGO-QKLMXXKVSA-N", "Hex2Cer 18:1;O2/16:0 (PubChem CID 53477895)"
         )
 
 
@@ -334,8 +419,14 @@ class TestCrossClassConsistency:
             "PE 16:0/18:1(9Z)",
             "PA 16:0/18:1(9Z)",
             "PS 16:0/18:1(9Z)",
+            "PE O-16:0/18:1(9Z)",
+            "PC O-16:0/18:1(9Z)",
+            "PE P-18:0/20:4(5Z,8Z,11Z,14Z)",
+            "LPC O-18:1(9Z)",
             "Cer 18:1;O2/16:0",
             "SM 18:1;O2/16:0",
+            "HexCer 18:1;O2/16:0",
+            "GlcCer 18:1;O2/16:0",
             "ST 27:1;O",
             "CE 16:0",
         ],
@@ -372,8 +463,13 @@ class TestCrossClassConsistency:
             "PE 16:0/18:1(9Z)",
             "PA 16:0/18:1(9Z)",
             "PS 16:0/18:1(9Z)",
+            "PE O-16:0/18:1(9Z)",
+            "PC O-16:0/18:1(9Z)",
+            "PE P-18:0/20:4(5Z,8Z,11Z,14Z)",
+            "LPC O-18:1(9Z)",
             "Cer 18:1;O2/16:0",
             "SM 18:1;O2/16:0",
+            "HexCer 18:1;O2/16:0",
             "ST 27:1;O",
             "CE 16:0",
             "CE 18:0",

@@ -72,20 +72,37 @@ class TestLysoGP:
 class TestEtherGP:
     """Tests for ether and plasmalogen glycerophospholipids."""
 
-    def test_lpc_ether(self, conv):
-        """LPC O-18:1 (lyso-alkyl-PC)."""
-        try:
-            smiles = conv.to_smiles("LPC O-18:1(9Z)")
-            mol = Chem.MolFromSmiles(smiles)
-            assert mol is not None
-        except InsufficientStructuralDetailError:
-            pytest.skip("No chain detail for LPC O-18:1")
+    @pytest.mark.parametrize(
+        "lipid_name,expected_formula",
+        [
+            # Plasmanyl PE (alkyl ether at sn-1)
+            ("PE O-16:0/18:1(9Z)", "C39H78NO7P"),
+            # Plasmanyl PC (alkyl ether at sn-1)
+            ("PC O-16:0/18:1(9Z)", "C42H84NO7P"),
+            # Lyso-alkyl-PC
+            ("LPC O-18:1(9Z)", "C26H54NO6P"),
+        ],
+    )
+    def test_ether_formula(self, conv, lipid_name, expected_formula):
+        smiles = conv.to_smiles(lipid_name)
+        assert_formula(smiles, expected_formula, lipid_name)
 
-    def test_pe_plasmalogen(self, conv):
-        """PE P-16:0/18:1(9Z) (plasmalogen PE)."""
-        try:
-            smiles = conv.to_smiles("PE P-16:0/18:1(9Z)")
-            mol = Chem.MolFromSmiles(smiles)
-            assert mol is not None
-        except (InsufficientStructuralDetailError, Exception):
-            pytest.skip("Plasmalogen parsing not yet fully supported")
+    @pytest.mark.parametrize(
+        "lipid_name",
+        [
+            "PE O-16:0/18:1(9Z)",
+            "PC O-16:0/18:1(9Z)",
+            "LPC O-18:1(9Z)",
+            "PE P-18:0/20:4(5Z,8Z,11Z,14Z)",
+            "PC P-18:0/20:4(5Z,8Z,11Z,14Z)",
+        ],
+    )
+    def test_ether_smiles_parseable(self, conv, lipid_name):
+        smiles = conv.to_smiles(lipid_name)
+        mol = Chem.MolFromSmiles(smiles)
+        assert mol is not None, f"RDKit cannot parse SMILES for {lipid_name}"
+
+    def test_plasmalogen_formula(self, conv):
+        """PE P-18:0/20:4 (plasmenyl PE) — vinyl ether at sn-1."""
+        smiles = conv.to_smiles("PE P-18:0/20:4(5Z,8Z,11Z,14Z)")
+        assert_formula(smiles, "C43H78NO7P", "PE P-18:0/20:4(5Z,8Z,11Z,14Z)")
