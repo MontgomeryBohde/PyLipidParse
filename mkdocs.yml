@@ -1,0 +1,49 @@
+site_name: PyLipidParse
+site_url: https://montgomerybohde.github.io/PyLipidParse
+site_description: Convert lipid shorthand notation to SMILES, InChI, InChIKey, and RDKit molecules
+repo_url: https://github.com/MontgomeryBohde/PyLipidParse
+repo_name: MontgomeryBohde/PyLipidParse
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.sections
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Supported Classes: supported_classes.md
+  - API Reference: api_reference.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            show_root_heading: true
+            heading_level: 3
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - tables
