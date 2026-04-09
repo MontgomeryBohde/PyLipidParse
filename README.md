@@ -53,6 +53,12 @@ pip install pylipidparse
 uv add pylipidparse
 ```
 
+### MCP server (for Claude / AI assistants)
+
+```bash
+pip install "pylipidparse[mcp]"   # requires Python 3.10+
+```
+
 ### From source
 
 ```bash
@@ -95,6 +101,36 @@ cannot be generated from it.
 | `PC 16:0/18:1(9Z)` | `PC 34:1` (no chain breakdown) |
 | `TG 16:0/18:1(9Z)/18:2(9Z,12Z)` | `TG 16:0_18:1_18:2` (unknown positions) |
 | `FA 18:1(9Z)` | `FA 18:1` (no double bond position) |
+
+## Use with Claude (MCP server)
+
+PyLipidParse includes an MCP server so you can convert lipid names directly inside Claude Code
+or Claude Desktop — no Python required.
+
+**Claude Code plugin** — install from [claude.com/plugins](https://claude.com/plugins) (search
+*PyLipidParse*) or load locally:
+
+```bash
+claude --plugin-dir ./claude-code-plugin
+```
+
+**Manual MCP config** — add to `.mcp.json` or run:
+
+```bash
+claude mcp add pylipidparse -- uvx --from "pylipidparse[mcp]" pylipidparse-mcp
+```
+
+Then ask Claude naturally:
+
+```
+What is the SMILES for PC 16:0/18:1(9Z)?
+Convert these ceramides to InChIKey: Cer 18:1;O2/16:0, Cer 18:1;O2/24:1(15Z)
+Export these 20 lipids as an SDF file.
+```
+
+Six tools are available: `lipid_to_smiles`, `lipid_to_inchi`, `lipid_to_inchikey`,
+`batch_convert_lipids`, `lipid_to_mol_file`, `lipids_to_sdf`.
+See the [MCP documentation](https://montgomerybohde.github.io/PyLipidParse/mcp/) for full details.
 
 ## API reference
 
