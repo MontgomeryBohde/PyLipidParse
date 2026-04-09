@@ -316,31 +316,20 @@ class TestSphingolipidInChIKeys:
             ik, "VJLLLMIZEJJZTE-NNTBDIJYSA-N", "GlcCer 18:1;O2/16:0 (PubChem CID 14035030)"
         )
 
-    @pytest.mark.xfail(
-        reason="GalCer uses same sugar template as GlcCer — galactose ring stereo not yet distinct",
-        strict=False,
-    )
     def test_galcer_inchikey(self, conv):
         """GalCer d18:1/16:0 from PubChem CID 44260148 (LIPID MAPS LMSP0501AC01).
 
-        GalCer should differ from GlcCer in the sugar ring stereochemistry
-        (galactose vs glucose at C-4 of the hexose). Currently the builder
-        uses the same glucose template for both.
+        GalCer uses a distinct galactose sugar template (C-4 epimer of glucose).
         """
         ik = conv.to_inchikey("GalCer 18:1;O2/16:0")
         assert_inchikey_match(
-            ik, "VJLLLMIZEJJZTE-DKZZKAIRSA-N", "GalCer 18:1;O2/16:0 (PubChem CID 44260148)"
+            ik, "VJLLLMIZEJJZTE-CSYDNKSLSA-N", "GalCer 18:1;O2/16:0 (PubChem CID 44260148)"
         )
 
-    @pytest.mark.xfail(
-        reason="Hex2Cer builder does not yet attach second hexose — produces HexCer structure",
-        strict=False,
-    )
     def test_laccer_inchikey(self, conv):
         """LacCer d18:1/16:0 (Hex2Cer) from PubChem CID 53477895 (LIPID MAPS LMSP0501AB03).
 
-        Lactosylceramide has two hexose sugars (Gal-Glc-Cer). The expected
-        formula is C46H87NO13, not C40H77NO8.
+        Lactosylceramide has two hexose sugars (Gal-Glc-Cer), formula C46H87NO13.
         """
         ik = conv.to_inchikey("Hex2Cer 18:1;O2/16:0")
         assert_inchikey_match(

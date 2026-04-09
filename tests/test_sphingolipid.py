@@ -92,15 +92,10 @@ class TestGlycosphingolipids:
         smiles = conv.to_smiles("GalCer 18:1;O2/16:0")
         assert_formula(smiles, "C40H77NO8", "GalCer d18:1/16:0")
 
-    @pytest.mark.xfail(
-        reason="Hex2Cer builder does not yet attach second hexose — produces HexCer structure",
-        strict=False,
-    )
     def test_hex2cer_formula(self, conv):
-        """Hex2Cer d18:1/16:0 (lactosylceramide) should have C46H87NO13.
+        """Hex2Cer d18:1/16:0 (lactosylceramide) — C46H87NO13.
 
-        Expected: Cer(C34H67NO3) + 2 hexoses(2 * C6H12O6) - 2 H2O = C46H87NO13.
-        Currently produces C40H77NO8 (same as HexCer — only one hexose attached).
+        Two hexose sugars attached: Cer(C34H67NO3) + 2*hexose - 2*H2O = C46H87NO13.
         """
         smiles = conv.to_smiles("Hex2Cer 18:1;O2/16:0")
         assert_formula(smiles, "C46H87NO13", "Hex2Cer d18:1/16:0")

@@ -146,7 +146,7 @@ def _promote_unlocalized_mods(fa, mods: dict) -> dict:
 class SphingolipidBuilder(AbstractLipidBuilder):
     """Build sphingolipid molecules from pygoslin LipidMolecule objects."""
 
-    def build(self, lipid) -> Chem.Mol:
+    def build(self, lipid, lipid_name: str = "") -> Chem.Mol:
         headgroup = lipid.headgroup.headgroup
         fa_dict = lipid.fa
 
@@ -193,11 +193,17 @@ class SphingolipidBuilder(AbstractLipidBuilder):
         else:
             n_acyl_part = "N"  # Free sphingoid base
 
-        # Resolve headgroup: pygoslin normalizes HexCer/GlcCer/GalCer to 'Cer'
+        # Resolve headgroup: pygoslin normalizes HexCer/GlcCer/GalCer/Hex2Cer to 'Cer'
         # with an '[X]' functional group on the LCB marking the sugar attachment.
+        # We recover the original subtype from the user-supplied lipid_name because
+        # pygoslin erases the distinction (GalCer vs GlcCer vs Hex2Cer all become 'Cer').
         resolved_hg = headgroup
         if headgroup == "Cer" and _lcb_has_sugar(lcb_fa):
-            resolved_hg = "HexCer"
+            resolved_hg = "HexCer"  # default fallback
+            if lipid_name:
+                prefix = lipid_name.strip().split()[0]
+                if prefix in SPHINGOLIPID_HEADGROUPS:
+                    resolved_hg = prefix
 
         # Headgroup at C1-OH
         if resolved_hg not in SPHINGOLIPID_HEADGROUPS:

@@ -209,7 +209,7 @@ class LipidConverter:
                 "e.g. 'PC 16:0/18:1(9Z)' instead of 'PC 34:1'."
             )
 
-        mol = self._dispatch(lipid_mol)
+        mol = self._dispatch(lipid_mol, lipid_name)
 
         # LRU eviction: if cache is full, remove the oldest entry
         if self._cache_size > 0:
@@ -220,7 +220,7 @@ class LipidConverter:
 
         return mol
 
-    def _dispatch(self, lipid) -> Chem.Mol:
+    def _dispatch(self, lipid, lipid_name: str = "") -> Chem.Mol:
         """Dispatch to the correct builder based on lipid class.
 
         ``lipid`` is ``lipid_adduct.lipid`` — a LipidMolecule object with
@@ -248,7 +248,7 @@ class LipidConverter:
         if hg_class in {c.upper() for c in _SP_CLASSES}:
             from pylipidparse.builders.sphingolipid import SphingolipidBuilder
 
-            return SphingolipidBuilder().build(lipid)
+            return SphingolipidBuilder().build(lipid, lipid_name=lipid_name)
 
         if hg_class in {c.upper() for c in _ST_CLASSES}:
             from pylipidparse.builders.sterol import SterolBuilder

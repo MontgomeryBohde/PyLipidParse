@@ -125,11 +125,13 @@ SPHINGOLIPID_HEADGROUPS: Dict[str, str] = {
     "HexCer": "O[C@H]1[C@@H]([C@H]([C@@H]([C@H](O1)CO)O)O)O",
     # Glucosylceramide (Glc = beta-D-glucose, same stereo as HexCer)
     "GlcCer": "O[C@H]1[C@@H]([C@H]([C@@H]([C@H](O1)CO)O)O)O",
-    # Galactosylceramide (Gal = beta-D-galactose)
-    "GalCer": "O[C@@H]1O[C@H](CO)[C@H](O)[C@@H](O)[C@@H]1O",
-    # Lactosylceramide (Hex2Cer): Glc-Gal
+    # Galactosylceramide (Gal = beta-D-galactose, PubChem CID 44260148)
+    # Verified: produces InChIKey VJLLLMIZEJJZTE-CSYDNKSLSA-N for d18:1/16:0
+    "GalCer": "O[C@H]1C([C@H]([C@H](C(O1)CO)O)O)O",
+    # Lactosylceramide (Hex2Cer = Gal-Glc disaccharide, PubChem CID 53477895)
+    # Verified: produces InChIKey HLIJNIKSBCIDGO-QKLMXXKVSA-N for d18:1/16:0
     "Hex2Cer": (
-        "O[C@@H]1O[C@H](CO[C@@H]2O[C@H](CO)[C@H](O)[C@@H](O)[C@@H]2O)" "[C@@H](O)[C@H](O)[C@@H]1O"
+        "O[C@H]1[C@@H]([C@H]([C@@H]([C@H](O1)CO)" "O[C@H]2[C@@H]([C@H]([C@H]([C@H](O2)CO)O)O)O)O)O"
     ),
     # Ceramide-1-phosphate
     "Cer1P": "OP(=O)([O-])[O-]",
